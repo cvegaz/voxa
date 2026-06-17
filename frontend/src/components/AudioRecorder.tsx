@@ -1,0 +1,284 @@
+import { useState, useRef, useEffect, useCallback } from 'react';
+import styles from './AudioRecorder.module.css';
+
+export interface AudioRecorderProps {
+  /** Called when a valid recording is completed */
+  onRecordingComplete: (audioBlob: Blob, duration: number, mimeType: string) => void;
+  /** Called when an error occurs */
+  onError: (error: string) => void;
+  /** Disable the recorder (e.g. during LLM processing) */
+  isDisabled?: boolean;
+  /** External status override */
+  status?: 'idle' | 'recording' | 'processing' | 'error';
+}
+
+type RecorderStatus = 'idle' | 'recording' | 'processing' | 'error';
+
+const MAX_DURATION_SECONDS = 30;
+const MIN_DURATION_SECONDS = 1;
+
+/**
+ * Determines the best supported MIME type for MediaRecorder.
+ * Tries audio/webm;codecs=opus first, then audio/ogg, then audio/webm.
+ */
+function getSupportedMimeType(): string {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/ogg',
+    'audio/webm',
+  ];
+  for (const type of types) {
+    if (MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  // Fallback — let the browser pick
+  return '';
+}
+
+/**
+ * Formats seconds into MM:SS display string.
+ */
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * AudioRecorder component that handles microphone capture using MediaRecorder API.
+ *
+ * Features:
+ * - Requests microphone permission on first press
+ * - Toggle recording on button press (start/stop)
+ * - Red pulse animation and timer during recording
+ * - Auto-stop at 30 seconds
+ * - Client-side duration validation (reject < 1s)
+ * - Permission denied and hardware error handling
+ */
+export function AudioRecorder({
+  onRecordingComplete,
+  onError,
+  isDisabled = false,
+  status: externalStatus,
+}: AudioRecorderProps) {
+  const [internalStatus, setInternalStatus] = useState<RecorderStatus>('idle');
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const status = externalStatus ?? internalStatus;
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const streamRef = useRef<MediaStream | null>(null);
+  const mimeTypeRef = useRef<string>('');
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopTimer();
+      stopMediaStream();
+    };
+  }, []);
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const stopMediaStream = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      setDuration(elapsed);
+    }, 1000);
+  }, []);
+
+  const handleStop = useCallback(
+    (recorder: MediaRecorder) => {
+      recorder.onstop = () => {
+        stopTimer();
+        const elapsedSeconds = Math.floor(
+          (Date.now() - startTimeRef.current) / 1000
+        );
+
+        if (elapsedSeconds < MIN_DURATION_SECONDS) {
+          const errorMsg =
+            'El audio es demasiado corto (mínimo 1 segundo)';
+          setError(errorMsg);
+          setInternalStatus('error');
+          onError(errorMsg);
+          chunksRef.current = [];
+          stopMediaStream();
+          return;
+        }
+
+        const mimeType = mimeTypeRef.current || 'audio/webm';
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        chunksRef.current = [];
+        stopMediaStream();
+
+        setInternalStatus('processing');
+        onRecordingComplete(blob, elapsedSeconds, mimeType);
+      };
+    },
+    [onRecordingComplete, onError, stopTimer, stopMediaStream]
+  );
+
+  const startRecording = useCallback(async () => {
+    setError(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const mimeType = getSupportedMimeType();
+      mimeTypeRef.current = mimeType;
+
+      const options: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      const recorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      handleStop(recorder);
+
+      recorder.start();
+      setInternalStatus('recording');
+      setDuration(0);
+      startTimer();
+    } catch (err: unknown) {
+      let errorMsg: string;
+
+      if (err instanceof DOMException) {
+        if (
+          err.name === 'NotAllowedError' ||
+          err.name === 'PermissionDeniedError'
+        ) {
+          errorMsg =
+            'Se requiere acceso al micrófono para usar esta funcionalidad.';
+        } else {
+          errorMsg = 'No se pudo acceder al dispositivo de audio.';
+        }
+      } else {
+        errorMsg = 'No se pudo acceder al dispositivo de audio.';
+      }
+
+      setError(errorMsg);
+      setInternalStatus('error');
+      onError(errorMsg);
+    }
+  }, [handleStop, startTimer, onError]);
+
+  const stopRecording = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === 'recording'
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  // Auto-stop at 30 seconds
+  useEffect(() => {
+    if (status === 'recording' && duration >= MAX_DURATION_SECONDS) {
+      stopRecording();
+    }
+  }, [status, duration, stopRecording]);
+
+  const handleButtonClick = useCallback(() => {
+    if (status === 'recording') {
+      stopRecording();
+    } else if (status === 'idle' || status === 'error') {
+      startRecording();
+    }
+  }, [status, stopRecording, startRecording]);
+
+  const getButtonLabel = (): string => {
+    switch (status) {
+      case 'recording':
+        return 'Detener';
+      case 'processing':
+        return '';
+      default:
+        return 'Grabar';
+    }
+  };
+
+  const getAriaLabel = (): string => {
+    switch (status) {
+      case 'recording':
+        return 'Detener grabación';
+      case 'processing':
+        return 'Procesando audio';
+      default:
+        return 'Iniciar grabación de audio';
+    }
+  };
+
+  const isButtonDisabled = isDisabled || status === 'processing';
+
+  const buttonClasses = [
+    styles.recordButton,
+    status === 'recording' ? styles.recordButtonRecording : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div className={styles.container}>
+      <button
+        type="button"
+        className={buttonClasses}
+        onClick={handleButtonClick}
+        disabled={isButtonDisabled}
+        aria-label={getAriaLabel()}
+      >
+        {status === 'processing' ? (
+          <span className={styles.spinner} aria-hidden="true" />
+        ) : (
+          getButtonLabel()
+        )}
+      </button>
+
+      {status === 'recording' && (
+        <div className={styles.timerContainer}>
+          <span className={styles.pulseIndicator} aria-hidden="true" />
+          <span
+            className={styles.timer}
+            role="timer"
+            aria-live="polite"
+            aria-label={`Tiempo de grabación: ${formatTime(duration)}`}
+          >
+            {formatTime(duration)}
+          </span>
+        </div>
+      )}
+
+      {status === 'error' && error && (
+        <div className={styles.errorContainer} role="alert" aria-live="assertive">
+          <span className={styles.errorIcon} aria-hidden="true">
+            ⚠️
+          </span>
+          <p className={styles.errorMessage}>{error}</p>
+        </div>
+      )}
+    </div>
+  );
+}

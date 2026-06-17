@@ -45,7 +45,8 @@ Este módulo cubre la captura de audio desde el micrófono del usuario, su trans
 2. WHEN el Transcriptor genera el Texto_Transcrito, THE Aplicacion SHALL mostrar el Texto_Transcrito en un cuadro de texto editable ubicado debajo del botón de grabación en la Pantalla_Principal.
 3. WHILE el Transcriptor está procesando el Audio, THE Aplicacion SHALL mostrar un indicador visual de progreso en la Pantalla_Principal, y dicho indicador SHALL desaparecer cuando la transcripción finalice (con éxito o con error).
 4. IF el Audio tiene una duración inferior a 1 segundo, THEN THE Transcriptor SHALL rechazar el Audio antes de iniciar la transcripción y mostrar un mensaje indicando que el audio es demasiado corto para ser procesado.
-5. IF el Transcriptor no puede procesar el Audio por un error de servicio, THEN THE Aplicacion SHALL mostrar un mensaje de error descriptivo, limpiar el Texto_Transcrito del cuadro de texto y restablecer el Grabador a su estado inicial.
+5. IF el Audio tiene una duración superior a 30 segundos, THEN THE Grabador SHALL detener automáticamente la captura de audio y enviar el Audio al Transcriptor con los 30 segundos grabados.
+6. IF el Transcriptor no puede procesar el Audio por un error de servicio, THEN THE Aplicacion SHALL mostrar un mensaje de error descriptivo, limpiar el Texto_Transcrito del cuadro de texto y restablecer el Grabador a su estado inicial.
 6. THE Aplicacion SHALL permitir al usuario editar manualmente el Texto_Transcrito en el cuadro de texto antes de proceder.
 
 ---

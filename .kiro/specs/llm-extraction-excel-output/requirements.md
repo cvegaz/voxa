@@ -48,13 +48,13 @@ Este módulo recibe el texto transcrito del módulo `audio-transcription-control
 
 ---
 
-### Requirement 3: Vista del Excel en tiempo real
+### Requirement 3: Vista del Excel
 
-**User Story:** Como usuario, quiero ver en tiempo real cómo se va llenando el Excel con los registros añadidos, para poder verificar que los datos se están guardando correctamente.
+**User Story:** Como usuario, quiero ver el estado del Excel con los registros añadidos una vez que el procesamiento termine, para verificar que los datos se guardaron correctamente.
 
 #### Acceptance Criteria
 
-1. THE Vista_Excel SHALL mostrar el contenido actual del Archivo_Excel en una tabla al final de la Pantalla_Principal, excluyendo las tres filas de cabecera de la plantilla.
-2. WHEN un nuevo Registro es añadido al Archivo_Excel, THE Vista_Excel SHALL actualizar su contenido para reflejar la nueva fila añadida en un plazo máximo de 2 segundos.
-3. WHEN el módulo `excel-template-loader` confirma un Archivo_Excel válido, THE Vista_Excel SHALL mostrar todas las filas de datos existentes del archivo (fila 4 en adelante), incluyendo registros previamente guardados.
-4. WHILE el LLM_Processor está procesando el Texto_Transcrito, THE Vista_Excel SHALL mantener su contenido actual sin cambios hasta que el Registro sea añadido como nueva fila al Archivo_Excel.
+1. THE Vista_Excel SHALL mostrar el contenido del Archivo_Excel en una tabla al final de la Pantalla_Principal, excluyendo las tres filas de cabecera de la plantilla.
+2. WHILE el LLM_Processor está procesando el Texto_Transcrito, THE Vista_Excel SHALL permanecer oculta o sin cambios, sin mostrar el progreso del procesamiento al usuario.
+3. WHEN el LLM_Processor completa el procesamiento y el Registro es añadido exitosamente al Archivo_Excel, THE Aplicacion SHALL actualizar la Vista_Excel con el contenido completo del Archivo_Excel (incluyendo el nuevo Registro) y presentarla al usuario.
+4. WHEN el módulo `excel-template-loader` confirma un Archivo_Excel válido, THE Vista_Excel SHALL mostrar todas las filas de datos existentes del archivo (fila 4 en adelante), incluyendo registros previamente guardados.

@@ -77,10 +77,10 @@ class TestGetActiveSessionSuccess:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["session_id"] == str(session.id)
-        assert data["file_name"] == "plantilla.xlsx"
-        assert data["enriched_context"] == session.enriched_context
-        assert "confirmed_at" in data
+        assert data["sessionId"] == str(session.id)
+        assert data["fileName"] == "plantilla.xlsx"
+        assert data["enrichedContext"] == session.enriched_context
+        assert "confirmedAt" in data
 
     def test_response_contains_schema(self, client, mock_pool):
         """Response includes the column schema with correct structure."""
@@ -119,8 +119,8 @@ class TestGetActiveSessionSuccess:
         for col in columns:
             assert "index" in col
             assert "name" in col
-            assert "data_type" in col
-            assert "example_value" in col
+            assert "dataType" in col
+            assert "exampleValue" in col
 
     def test_confirmed_at_is_iso_format(self, client, mock_pool):
         """confirmed_at is returned as an ISO 8601 datetime string."""
@@ -138,7 +138,7 @@ class TestGetActiveSessionSuccess:
 
         assert response.status_code == 200
         # Should be parseable as a datetime
-        confirmed_at_str = response.json()["confirmed_at"]
+        confirmed_at_str = response.json()["confirmedAt"]
         # Python 3.10 fromisoformat doesn't support 'Z' suffix; replace with +00:00
         parsed = datetime.fromisoformat(confirmed_at_str.replace("Z", "+00:00"))
         assert parsed.year == 2024
@@ -161,8 +161,7 @@ class TestGetActiveSessionNotFound:
             response = client.get("/api/templates/active")
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     def test_404_response_has_detail_message(self, client, mock_pool):
         """404 response includes a descriptive detail message."""
@@ -176,6 +175,6 @@ class TestGetActiveSessionNotFound:
             response = client.get("/api/templates/active")
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert "detail" in data
-        assert len(data["detail"]) > 0
+        detail = response.json()["detail"]
+        assert isinstance(detail, str)
+        assert len(detail) > 0

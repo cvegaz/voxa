@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
 // Buscamos el nodo donde React va a "vivir" (el <div id="root"> del index.html).
@@ -12,6 +13,8 @@ if (!container) {
 // createRoot es la API de React 18: habilita el renderizado concurrente.
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

@@ -93,8 +93,7 @@ class TestDeleteEndpointNotFound:
         response = client.delete(f"/api/templates/{session_id}")
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     def test_delete_invalid_uuid_returns_422(self, client):
         """Deleting with an invalid UUID format returns 422."""

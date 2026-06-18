@@ -78,10 +78,10 @@ class TestExtractionProcessSuccess:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["extraction_id"] == extraction_id
-        assert data["row_number"] == 5
+        assert data["extractionId"] == extraction_id
+        assert data["rowNumber"] == 5
         assert len(data["record"]) == 2
-        assert data["record"][0]["column_name"] == "Nombre"
+        assert data["record"][0]["columnName"] == "Nombre"
         assert data["record"][0]["value"] == "Carlos"
 
     @patch("app.routes.extraction_routes.ExtractionOrchestrator")
@@ -138,8 +138,7 @@ class TestExtractionProcessSessionValidation:
         )
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     @patch("app.routes.extraction_routes.ExtractionRepository")
     def test_session_not_confirmed_returns_422(self, MockRepo, client):
@@ -160,8 +159,7 @@ class TestExtractionProcessSessionValidation:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_CONFIRMED"
+        assert response.json()["errorCode"] == "SESSION_NOT_CONFIRMED"
 
     @patch("app.routes.extraction_routes.ExtractionRepository")
     def test_replaced_session_returns_422(self, MockRepo, client):
@@ -182,8 +180,7 @@ class TestExtractionProcessSessionValidation:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_CONFIRMED"
+        assert response.json()["errorCode"] == "SESSION_NOT_CONFIRMED"
 
 
 class TestExtractionProcessInputValidation:
@@ -261,8 +258,7 @@ class TestExtractionProcessLLMErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "LLM_UNAVAILABLE"
+        assert response.json()["errorCode"] == "LLM_UNAVAILABLE"
 
     @patch("app.routes.extraction_routes.ExtractionOrchestrator")
     @patch("app.routes.extraction_routes.ExtractionRepository")
@@ -289,8 +285,7 @@ class TestExtractionProcessLLMErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "LLM_INVALID_RESPONSE"
+        assert response.json()["errorCode"] == "LLM_INVALID_RESPONSE"
 
 
 class TestExtractionProcessFileErrors:
@@ -321,8 +316,7 @@ class TestExtractionProcessFileErrors:
         )
 
         assert response.status_code == 500
-        data = response.json()["detail"]
-        assert data["error_code"] == "FILE_NOT_FOUND"
+        assert response.json()["errorCode"] == "FILE_NOT_FOUND"
 
     @patch("app.routes.extraction_routes.ExtractionOrchestrator")
     @patch("app.routes.extraction_routes.ExtractionRepository")
@@ -349,8 +343,7 @@ class TestExtractionProcessFileErrors:
         )
 
         assert response.status_code == 500
-        data = response.json()["detail"]
-        assert data["error_code"] == "FILE_WRITE_ERROR"
+        assert response.json()["errorCode"] == "FILE_WRITE_ERROR"
 
 
 class TestExtractionProcessDatabaseErrors:
@@ -381,5 +374,4 @@ class TestExtractionProcessDatabaseErrors:
         )
 
         assert response.status_code == 500
-        data = response.json()["detail"]
-        assert data["error_code"] == "DATABASE_ERROR"
+        assert response.json()["errorCode"] == "DATABASE_ERROR"

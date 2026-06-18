@@ -6,41 +6,43 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from .base import CamelModel
 
-class TranscribeResponse(BaseModel):
+
+class TranscribeResponse(CamelModel):
     """Response for POST /api/transcriptions/transcribe."""
 
     transcription_id: UUID
     text: str
 
 
-class AcceptRequest(BaseModel):
+class AcceptRequest(CamelModel):
     """Request body for POST /api/transcriptions/accept."""
 
     transcription_id: UUID
     text: str = Field(min_length=1)
 
 
-class AcceptResponse(BaseModel):
+class AcceptResponse(CamelModel):
     """Response for POST /api/transcriptions/accept."""
 
     status: str  # "accepted"
 
 
-class ResetRequest(BaseModel):
+class ResetRequest(CamelModel):
     """Request body for POST /api/transcriptions/reset."""
 
     transcription_id: UUID
 
 
-class ResetResponse(BaseModel):
+class ResetResponse(CamelModel):
     """Response for POST /api/transcriptions/reset."""
 
     status: str  # "reset"
 
 
-class TranscriptionSession(BaseModel):
-    """Represents a persisted transcription session from the database."""
+class TranscriptionSession(CamelModel):
+    """Represents a persisted transcription session (returned by GET /{id})."""
 
     id: UUID
     template_session_id: UUID
@@ -54,7 +56,7 @@ class TranscriptionSession(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """Standard error response for transcription endpoints."""
+    """Standard error response (internal shape; flattened by the API handler)."""
 
     detail: str
     error_code: str

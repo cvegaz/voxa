@@ -42,7 +42,7 @@ class TestGetExtractionRecordsEmpty:
         assert response.status_code == 200
         data = response.json()
         assert data["records"] == []
-        assert data["total_rows"] == 0
+        assert data["totalRows"] == 0
 
 
 class TestGetExtractionRecordsWithData:
@@ -89,20 +89,20 @@ class TestGetExtractionRecordsWithData:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["total_rows"] == 2
+        assert data["totalRows"] == 2
         assert len(data["records"]) == 2
 
         # Verify first record
         rec1 = data["records"][0]
-        assert rec1["extraction_id"] == str(extraction_id_1)
-        assert rec1["row_number"] == 4
-        assert rec1["transcribed_text"] == "Me llamo Juan y tengo 30 años"
+        assert rec1["extractionId"] == str(extraction_id_1)
+        assert rec1["rowNumber"] == 4
+        assert rec1["transcribedText"] == "Me llamo Juan y tengo 30 años"
 
         # Verify second record
         rec2 = data["records"][1]
-        assert rec2["extraction_id"] == str(extraction_id_2)
-        assert rec2["row_number"] == 5
-        assert rec2["transcribed_text"] == "Soy María, tengo 25 años"
+        assert rec2["extractionId"] == str(extraction_id_2)
+        assert rec2["rowNumber"] == 5
+        assert rec2["transcribedText"] == "Soy María, tengo 25 años"
 
     def test_record_json_is_correctly_mapped_to_record_value_list(
         self, client, mock_pool
@@ -143,7 +143,7 @@ class TestGetExtractionRecordsWithData:
         assert len(record) == 3
 
         # Verify each value is mapped correctly
-        record_dict = {rv["column_name"]: rv["value"] for rv in record}
+        record_dict = {rv["columnName"]: rv["value"] for rv in record}
         assert record_dict["Nombre"] == "Juan"
         assert record_dict["Edad"] == "30"
         assert record_dict["Ciudad"] == "Madrid"
@@ -179,5 +179,5 @@ class TestGetExtractionRecordsWithData:
         assert response.status_code == 200
         record_values = data = response.json()["records"][0]["record"]
         for rv in record_values:
-            assert "column_name" in rv
+            assert "columnName" in rv
             assert "value" in rv

@@ -75,7 +75,7 @@ class TestConfirmEndpointSuccess:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["enriched_context"] == enriched
+        assert data["enrichedContext"] == enriched
 
     @patch("app.routes.template_routes.LLMEnrichmentService")
     @patch("app.routes.template_routes.TemplateRepository")
@@ -150,8 +150,7 @@ class TestConfirmEndpointSessionNotFound:
         )
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     @patch("app.routes.template_routes.TemplateRepository")
     def test_confirmed_session_returns_404(self, MockRepo, client):
@@ -168,8 +167,7 @@ class TestConfirmEndpointSessionNotFound:
         )
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     @patch("app.routes.template_routes.TemplateRepository")
     def test_replaced_session_returns_404(self, MockRepo, client):
@@ -186,8 +184,7 @@ class TestConfirmEndpointSessionNotFound:
         )
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
 
 class TestConfirmEndpointContextValidation:
@@ -208,8 +205,7 @@ class TestConfirmEndpointContextValidation:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "CONTEXT_TOO_SHORT"
+        assert response.json()["errorCode"] == "CONTEXT_TOO_SHORT"
 
     @patch("app.routes.template_routes.TemplateRepository")
     def test_context_too_long_returns_422(self, MockRepo, client):
@@ -227,8 +223,7 @@ class TestConfirmEndpointContextValidation:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "CONTEXT_TOO_LONG"
+        assert response.json()["errorCode"] == "CONTEXT_TOO_LONG"
 
 
 class TestConfirmEndpointLLMErrors:
@@ -257,8 +252,7 @@ class TestConfirmEndpointLLMErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "LLM_UNAVAILABLE"
+        assert response.json()["errorCode"] == "LLM_UNAVAILABLE"
 
     @patch("app.routes.template_routes.LLMEnrichmentService")
     @patch("app.routes.template_routes.TemplateRepository")
@@ -283,8 +277,7 @@ class TestConfirmEndpointLLMErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "LLM_INVALID_RESPONSE"
+        assert response.json()["errorCode"] == "LLM_INVALID_RESPONSE"
 
 
 class TestConfirmEndpointRequestValidation:

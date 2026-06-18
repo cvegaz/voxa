@@ -80,7 +80,7 @@ class TestTranscribeEndpointSuccess:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["transcription_id"] == str(transcription_id)
+        assert data["transcriptionId"] == str(transcription_id)
         assert data["text"] == "Texto transcrito de prueba"
 
     @patch("app.routes.transcription_routes.WhisperTranscriptionService")
@@ -130,8 +130,7 @@ class TestTranscribeEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "EMPTY_AUDIO_FILE"
+        assert response.json()["errorCode"] == "EMPTY_AUDIO_FILE"
 
     def test_unsupported_mime_type_returns_422(self, client):
         """Unsupported MIME type returns 422 with UNSUPPORTED_AUDIO_FORMAT error."""
@@ -142,8 +141,7 @@ class TestTranscribeEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "UNSUPPORTED_AUDIO_FORMAT"
+        assert response.json()["errorCode"] == "UNSUPPORTED_AUDIO_FORMAT"
 
     def test_duration_too_short_returns_422(self, client):
         """Duration < 1.0s returns 422 with AUDIO_TOO_SHORT error."""
@@ -154,8 +152,7 @@ class TestTranscribeEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "AUDIO_TOO_SHORT"
+        assert response.json()["errorCode"] == "AUDIO_TOO_SHORT"
 
     def test_duration_too_long_returns_422(self, client):
         """Duration > 30.0s returns 422 with AUDIO_TOO_LONG error."""
@@ -166,8 +163,7 @@ class TestTranscribeEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "AUDIO_TOO_LONG"
+        assert response.json()["errorCode"] == "AUDIO_TOO_LONG"
 
 
 class TestTranscribeEndpointNoActiveSession:
@@ -187,8 +183,7 @@ class TestTranscribeEndpointNoActiveSession:
         )
 
         assert response.status_code == 409
-        data = response.json()["detail"]
-        assert data["error_code"] == "NO_CONFIRMED_SCHEMA"
+        assert response.json()["errorCode"] == "NO_CONFIRMED_SCHEMA"
 
 
 class TestTranscribeEndpointWhisperErrors:
@@ -218,8 +213,7 @@ class TestTranscribeEndpointWhisperErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "WHISPER_UNAVAILABLE"
+        assert response.json()["errorCode"] == "WHISPER_UNAVAILABLE"
 
     @patch("app.routes.transcription_routes.WhisperTranscriptionService")
     @patch("app.routes.transcription_routes.TemplateRepository")
@@ -245,8 +239,7 @@ class TestTranscribeEndpointWhisperErrors:
         )
 
         assert response.status_code == 502
-        data = response.json()["detail"]
-        assert data["error_code"] == "WHISPER_EMPTY_RESPONSE"
+        assert response.json()["errorCode"] == "WHISPER_EMPTY_RESPONSE"
 
     @patch("app.routes.transcription_routes.WhisperTranscriptionService")
     @patch("app.routes.transcription_routes.TemplateRepository")
@@ -272,5 +265,4 @@ class TestTranscribeEndpointWhisperErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "WHISPER_NO_SPEECH"
+        assert response.json()["errorCode"] == "WHISPER_NO_SPEECH"

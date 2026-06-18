@@ -94,13 +94,13 @@ class TestGetTranscriptionSuccess:
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == str(session_id)
-        assert data["template_session_id"] == str(template_id)
+        assert data["templateSessionId"] == str(template_id)
         assert data["status"] == "pending"
-        assert data["original_text"] == "Test transcription"
-        assert data["final_text"] is None
-        assert data["duration_seconds"] == 10.5
-        assert data["accepted_at"] is None
-        assert data["discarded_at"] is None
+        assert data["originalText"] == "Test transcription"
+        assert data["finalText"] is None
+        assert data["durationSeconds"] == 10.5
+        assert data["acceptedAt"] is None
+        assert data["discardedAt"] is None
 
     def test_get_accepted_session_includes_final_text(self, client, mock_pool):
         """An accepted session includes final_text and accepted_at."""
@@ -126,8 +126,8 @@ class TestGetTranscriptionSuccess:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "accepted"
-        assert data["final_text"] == "Edited final text"
-        assert data["accepted_at"] is not None
+        assert data["finalText"] == "Edited final text"
+        assert data["acceptedAt"] is not None
 
 
 class TestGetTranscriptionNotFound:
@@ -162,8 +162,7 @@ class TestGetTranscriptionNotFound:
         response = client.get(f"/api/transcriptions/{session_id}")
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
     def test_get_invalid_uuid_returns_422(self, client):
         """Requesting with an invalid UUID format returns 422."""

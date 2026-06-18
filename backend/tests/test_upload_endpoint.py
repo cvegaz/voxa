@@ -120,8 +120,8 @@ class TestUploadEndpointSuccess:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["session_id"] == session_id
-        assert data["file_name"] == "plantilla.xlsx"
+        assert data["sessionId"] == session_id
+        assert data["fileName"] == "plantilla.xlsx"
         assert "schema" in data
         assert len(data["schema"]["columns"]) == 3
 
@@ -149,13 +149,13 @@ class TestUploadEndpointSuccess:
 
         assert columns[0]["index"] == 1
         assert columns[0]["name"] == "Columna_1"
-        assert columns[0]["data_type"] == "texto"
-        assert columns[0]["example_value"] == "ejemplo_1"
+        assert columns[0]["dataType"] == "texto"
+        assert columns[0]["exampleValue"] == "ejemplo_1"
 
         assert columns[1]["index"] == 2
         assert columns[1]["name"] == "Columna_2"
-        assert columns[1]["data_type"] == "texto"
-        assert columns[1]["example_value"] == "ejemplo_2"
+        assert columns[1]["dataType"] == "texto"
+        assert columns[1]["exampleValue"] == "ejemplo_2"
 
     def test_valid_upload_calls_replace_previous_sessions(self, client, mock_pool):
         """Upload replaces previous sessions before creating a new one."""
@@ -212,8 +212,7 @@ class TestUploadEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "INVALID_EXTENSION"
+        assert response.json()["errorCode"] == "INVALID_EXTENSION"
 
     def test_too_many_columns_returns_422(self, client):
         """File with >8 columns returns 422 with TOO_MANY_COLUMNS error."""
@@ -224,8 +223,7 @@ class TestUploadEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "TOO_MANY_COLUMNS"
+        assert response.json()["errorCode"] == "TOO_MANY_COLUMNS"
 
     def test_missing_data_types_returns_422(self, client):
         """File with incomplete row 2 returns 422 with MISSING_DATA_TYPES error."""
@@ -236,8 +234,7 @@ class TestUploadEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "MISSING_DATA_TYPES"
+        assert response.json()["errorCode"] == "MISSING_DATA_TYPES"
 
     def test_empty_header_returns_422(self, client):
         """File with empty row 1 returns 422 with EMPTY_HEADER_ROW error."""
@@ -248,8 +245,7 @@ class TestUploadEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "EMPTY_HEADER_ROW"
+        assert response.json()["errorCode"] == "EMPTY_HEADER_ROW"
 
     def test_corrupt_file_returns_422(self, client):
         """Corrupt/unreadable file returns 422 with UNREADABLE_FILE error."""
@@ -259,8 +255,7 @@ class TestUploadEndpointValidationErrors:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "UNREADABLE_FILE"
+        assert response.json()["errorCode"] == "UNREADABLE_FILE"
 
     def test_no_file_field_returns_422(self, client):
         """Request without file field returns 422."""
@@ -291,10 +286,10 @@ class TestUploadEndpointResponseFormat:
 
         assert response.status_code == 200
         data = response.json()
-        assert "session_id" in data
+        assert "sessionId" in data
         assert "schema" in data
-        assert "file_name" in data
-        assert data["file_name"] == "my_template.xlsx"
+        assert "fileName" in data
+        assert data["fileName"] == "my_template.xlsx"
 
     def test_schema_columns_have_all_fields(self, client, mock_pool):
         """Each column in schema has index, name, data_type, example_value."""
@@ -319,5 +314,5 @@ class TestUploadEndpointResponseFormat:
         for col in columns:
             assert "index" in col
             assert "name" in col
-            assert "data_type" in col
-            assert "example_value" in col
+            assert "dataType" in col
+            assert "exampleValue" in col

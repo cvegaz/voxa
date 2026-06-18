@@ -150,8 +150,7 @@ class TestAcceptEndpointSessionNotFound:
         )
 
         assert response.status_code == 404
-        data = response.json()["detail"]
-        assert data["error_code"] == "SESSION_NOT_FOUND"
+        assert response.json()["errorCode"] == "SESSION_NOT_FOUND"
 
 
 class TestAcceptEndpointEmptyText:
@@ -181,8 +180,7 @@ class TestAcceptEndpointEmptyText:
         )
 
         assert response.status_code == 422
-        data = response.json()["detail"]
-        assert data["error_code"] == "EMPTY_TRANSCRIPTION"
+        assert response.json()["errorCode"] == "EMPTY_TRANSCRIPTION"
 
     def test_pydantic_rejects_empty_string(self, client):
         """Pydantic rejects empty string via min_length=1 before reaching validator."""
@@ -222,8 +220,7 @@ class TestAcceptEndpointNoConfirmedSchema:
         )
 
         assert response.status_code == 409
-        data = response.json()["detail"]
-        assert data["error_code"] == "NO_CONFIRMED_SCHEMA"
+        assert response.json()["errorCode"] == "NO_CONFIRMED_SCHEMA"
 
 
 class TestAcceptEndpointRequestValidation:

@@ -65,7 +65,7 @@ async def test_reset_session_not_found(mock_pool):
 
     assert response.status_code == 404
     data = response.json()
-    assert data["detail"]["error_code"] == "SESSION_NOT_FOUND"
+    assert data["errorCode"] == "SESSION_NOT_FOUND"
 
 
 @pytest.mark.asyncio

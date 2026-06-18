@@ -2,7 +2,6 @@ import type {
   UploadResponse,
   ConfirmResponse,
   ActiveSessionResponse,
-  ApiErrorResponse,
 } from '../types/template';
 import { TemplateApiError } from '../types/template';
 
@@ -38,12 +37,19 @@ async function handleResponse<T>(response: Response): Promise<T> {
   let detail = `Request failed with status ${response.status}`;
 
   try {
-    const errorBody: ApiErrorResponse = await response.json();
-    if (errorBody.errorCode) {
-      errorCode = errorBody.errorCode;
+    const errorBody = await response.json();
+    const rawCode: unknown = errorBody?.errorCode;
+    const rawDetail: unknown = errorBody?.detail;
+    if (typeof rawCode === 'string') {
+      errorCode = rawCode;
     }
-    if (errorBody.detail) {
-      detail = errorBody.detail;
+    // `detail` must be a string before it reaches React. The backend returns a
+    // flat string, but we defend against arrays/objects (e.g. raw FastAPI
+    // validation errors) so a bad shape can never blank the screen.
+    if (typeof rawDetail === 'string') {
+      detail = rawDetail;
+    } else if (Array.isArray(rawDetail) && typeof rawDetail[0]?.msg === 'string') {
+      detail = rawDetail[0].msg;
     }
   } catch {
     // If JSON parsing fails, use defaults based on status

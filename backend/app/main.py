@@ -2,7 +2,10 @@
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import close_pool, get_pool
 from app.routes.extraction_routes import router as extraction_router
@@ -26,6 +29,48 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Flatten all HTTP errors to the contract the frontend expects:
+    a top-level ``{"detail": str, "errorCode": str}`` in camelCase.
+
+    Routes raise ``HTTPException(detail=ErrorResponse(...).model_dump())``, which
+    produces a nested ``{"detail": {"detail": ..., "error_code": ...}}``. We
+    unwrap it here so the client never has to deal with nested or snake_case shapes.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "detail": detail.get("detail", ""),
+                "errorCode": detail.get("error_code", "ERROR"),
+            },
+        )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(detail), "errorCode": "ERROR"},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """FastAPI's default 422 puts a list of error objects in ``detail``, which the
+    frontend cannot render. Collapse it to a single human-readable string."""
+    errors = exc.errors()
+    message = "Los datos enviados no son válidos."
+    if errors:
+        first = errors[0]
+        loc = ".".join(str(p) for p in first.get("loc", []) if p != "body")
+        msg = first.get("msg", "")
+        message = f"{loc}: {msg}".strip(": ") or message
+    return JSONResponse(
+        status_code=422,
+        content={"detail": message, "errorCode": "VALIDATION_ERROR"},
+    )
+
 
 app.include_router(template_router)
 app.include_router(transcription_router)

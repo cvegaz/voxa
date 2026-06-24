@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import anthropic
+import openai
 
 from app.models import ColumnDef, ColumnSchema
 from app.services.llm_enrichment_service import LLMEnrichmentService
@@ -38,8 +38,12 @@ def sample_context():
 
 @pytest.fixture
 def mock_client():
-    """Create a mock AsyncAnthropic client."""
-    return AsyncMock(spec=anthropic.AsyncAnthropic)
+    """Create a mock AsyncOpenAI client."""
+    client = AsyncMock(spec=openai.AsyncOpenAI)
+    client.chat = MagicMock()
+    client.chat.completions = MagicMock()
+    client.chat.completions.create = AsyncMock()
+    return client
 
 
 @pytest.fixture
@@ -49,20 +53,21 @@ def service(mock_client):
 
 
 def _make_message_response(text: str):
-    """Helper to create a mock Claude message response."""
-    text_block = MagicMock()
-    text_block.type = "text"
-    text_block.text = text
+    """Helper to create a mock OpenAI chat completion response."""
     message = MagicMock()
-    message.content = [text_block]
-    return message
+    message.content = text
+    choice = MagicMock()
+    choice.message = message
+    completion = MagicMock()
+    completion.choices = [choice]
+    return completion
 
 
 def _make_empty_message_response():
-    """Helper to create a mock Claude response with empty content."""
-    message = MagicMock()
-    message.content = []
-    return message
+    """Helper to create a mock OpenAI response with no choices."""
+    completion = MagicMock()
+    completion.choices = []
+    return completion
 
 
 class TestLLMEnrichmentServiceEnrich:
@@ -72,29 +77,29 @@ class TestLLMEnrichmentServiceEnrich:
     async def test_enrich_returns_enriched_context(
         self, service, mock_client, sample_context, sample_schema
     ):
-        """Test that enrich() returns the text from Claude's response."""
+        """Test that enrich() returns the text from the model's response."""
         enriched = "Contexto enriquecido: pacientes clínica dental, campos: nombre, edad, fecha."
-        mock_client.messages.create = AsyncMock(
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_message_response(enriched)
         )
 
         result = await service.enrich(sample_context, sample_schema)
 
         assert result == enriched
-        mock_client.messages.create.assert_called_once()
+        mock_client.chat.completions.create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_enrich_builds_prompt_with_context_and_schema(
         self, service, mock_client, sample_context, sample_schema
     ):
-        """Test that the prompt sent to Claude includes user context and schema info."""
-        mock_client.messages.create = AsyncMock(
+        """Test that the prompt sent to the model includes user context and schema info."""
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_message_response("enriched")
         )
 
         await service.enrich(sample_context, sample_schema)
 
-        call_args = mock_client.messages.create.call_args
+        call_args = mock_client.chat.completions.create.call_args
         messages = call_args.kwargs["messages"]
         prompt_content = messages[0]["content"]
 
@@ -114,8 +119,8 @@ class TestLLMEnrichmentServiceEnrich:
     async def test_enrich_raises_invalid_response_on_empty_content(
         self, service, mock_client, sample_context, sample_schema
     ):
-        """Test that LLMInvalidResponseError is raised when response has no content."""
-        mock_client.messages.create = AsyncMock(
+        """Test that LLMInvalidResponseError is raised when response has no choices."""
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_empty_message_response()
         )
 
@@ -129,13 +134,9 @@ class TestLLMEnrichmentServiceEnrich:
         self, service, mock_client, sample_context, sample_schema
     ):
         """Test that LLMInvalidResponseError is raised for whitespace-only responses."""
-        text_block = MagicMock()
-        text_block.type = "text"
-        text_block.text = "   \n  \t  "
-        message = MagicMock()
-        message.content = [text_block]
-
-        mock_client.messages.create = AsyncMock(return_value=message)
+        mock_client.chat.completions.create = AsyncMock(
+            return_value=_make_message_response("   \n  \t  ")
+        )
 
         with pytest.raises(LLMInvalidResponseError) as exc_info:
             await service.enrich(sample_context, sample_schema)
@@ -147,8 +148,8 @@ class TestLLMEnrichmentServiceEnrich:
         self, service, mock_client, sample_context, sample_schema
     ):
         """Test that LLMUnavailableError is raised on connection errors after retries."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APIConnectionError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIConnectionError(request=MagicMock())
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -157,15 +158,15 @@ class TestLLMEnrichmentServiceEnrich:
 
         assert exc_info.value.error_code == "LLM_UNAVAILABLE"
         # Should have been called 3 times (1 initial + 2 retries)
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_enrich_raises_unavailable_on_timeout_error(
         self, service, mock_client, sample_context, sample_schema
     ):
         """Test that LLMUnavailableError is raised on timeout errors after retries."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APITimeoutError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APITimeoutError(request=MagicMock())
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -173,7 +174,7 @@ class TestLLMEnrichmentServiceEnrich:
                 await service.enrich(sample_context, sample_schema)
 
         assert exc_info.value.error_code == "LLM_UNAVAILABLE"
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_enrich_retries_on_5xx_server_error(
@@ -184,19 +185,19 @@ class TestLLMEnrichmentServiceEnrich:
         error_response.status_code = 500
         error_response.json.return_value = {"error": {"message": "Internal Server Error"}}
 
-        server_error = anthropic.InternalServerError(
+        server_error = openai.InternalServerError(
             message="Internal Server Error",
             response=error_response,
             body={"error": {"message": "Internal Server Error"}},
         )
 
-        mock_client.messages.create = AsyncMock(side_effect=server_error)
+        mock_client.chat.completions.create = AsyncMock(side_effect=server_error)
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
             with pytest.raises(LLMUnavailableError):
                 await service.enrich(sample_context, sample_schema)
 
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_enrich_succeeds_after_transient_failure(
@@ -205,9 +206,9 @@ class TestLLMEnrichmentServiceEnrich:
         """Test that enrich succeeds if a retry attempt succeeds."""
         enriched = "Contexto enriquecido generado correctamente."
 
-        mock_client.messages.create = AsyncMock(
+        mock_client.chat.completions.create = AsyncMock(
             side_effect=[
-                anthropic.APIConnectionError(request=MagicMock()),
+                openai.APIConnectionError(request=MagicMock()),
                 _make_message_response(enriched),
             ]
         )
@@ -216,7 +217,7 @@ class TestLLMEnrichmentServiceEnrich:
             result = await service.enrich(sample_context, sample_schema)
 
         assert result == enriched
-        assert mock_client.messages.create.call_count == 2
+        assert mock_client.chat.completions.create.call_count == 2
 
     @pytest.mark.asyncio
     async def test_enrich_does_not_retry_on_auth_error(
@@ -227,27 +228,27 @@ class TestLLMEnrichmentServiceEnrich:
         error_response.status_code = 401
         error_response.json.return_value = {"error": {"message": "Unauthorized"}}
 
-        auth_error = anthropic.AuthenticationError(
+        auth_error = openai.AuthenticationError(
             message="Unauthorized",
             response=error_response,
             body={"error": {"message": "Unauthorized"}},
         )
 
-        mock_client.messages.create = AsyncMock(side_effect=auth_error)
+        mock_client.chat.completions.create = AsyncMock(side_effect=auth_error)
 
         with pytest.raises(LLMUnavailableError):
             await service.enrich(sample_context, sample_schema)
 
         # Should NOT retry - only 1 call
-        assert mock_client.messages.create.call_count == 1
+        assert mock_client.chat.completions.create.call_count == 1
 
     @pytest.mark.asyncio
     async def test_enrich_uses_exponential_backoff_delays(
         self, service, mock_client, sample_context, sample_schema
     ):
         """Test that retry delays follow exponential backoff (1s, 3s)."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APIConnectionError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIConnectionError(request=MagicMock())
         )
 
         sleep_calls = []
@@ -283,7 +284,7 @@ class TestLLMEnrichmentServiceBuildPrompt:
         assert context in prompt
 
     def test_build_prompt_includes_extraction_instructions(self, service, sample_schema):
-        """Test that the prompt asks Claude to enrich for audio transcription extraction."""
+        """Test that the prompt asks the model to enrich for audio transcription extraction."""
         context = "Contexto de prueba mínimo que cumple con la longitud requerida."
         prompt = service._build_prompt(context, sample_schema)
 
@@ -296,12 +297,12 @@ class TestLLMEnrichmentServiceTransientErrors:
 
     def test_connection_error_is_transient(self, service):
         """APIConnectionError should be considered transient."""
-        error = anthropic.APIConnectionError(request=MagicMock())
+        error = openai.APIConnectionError(request=MagicMock())
         assert service._is_transient_error(error) is True
 
     def test_timeout_error_is_transient(self, service):
         """APITimeoutError should be considered transient."""
-        error = anthropic.APITimeoutError(request=MagicMock())
+        error = openai.APITimeoutError(request=MagicMock())
         assert service._is_transient_error(error) is True
 
     def test_5xx_error_is_transient(self, service):
@@ -310,7 +311,7 @@ class TestLLMEnrichmentServiceTransientErrors:
         response.status_code = 503
         response.json.return_value = {"error": {"message": "Service Unavailable"}}
 
-        error = anthropic.APIStatusError(
+        error = openai.APIStatusError(
             message="Service Unavailable",
             response=response,
             body={"error": {"message": "Service Unavailable"}},
@@ -323,7 +324,7 @@ class TestLLMEnrichmentServiceTransientErrors:
         response.status_code = 400
         response.json.return_value = {"error": {"message": "Bad Request"}}
 
-        error = anthropic.APIStatusError(
+        error = openai.APIStatusError(
             message="Bad Request",
             response=response,
             body={"error": {"message": "Bad Request"}},

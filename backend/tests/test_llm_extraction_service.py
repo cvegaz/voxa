@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import anthropic
+import openai
 
 from app.services.llm_extraction_service import LLMExtractionService
 from app.services.exceptions import LLMInvalidResponseError, LLMUnavailableError
@@ -11,8 +11,12 @@ from app.services.exceptions import LLMInvalidResponseError, LLMUnavailableError
 
 @pytest.fixture
 def mock_client():
-    """Create a mock AsyncAnthropic client."""
-    return AsyncMock(spec=anthropic.AsyncAnthropic)
+    """Create a mock AsyncOpenAI client."""
+    client = AsyncMock(spec=openai.AsyncOpenAI)
+    client.chat = MagicMock()
+    client.chat.completions = MagicMock()
+    client.chat.completions.create = AsyncMock()
+    return client
 
 
 @pytest.fixture
@@ -22,20 +26,21 @@ def service(mock_client):
 
 
 def _make_message_response(text: str):
-    """Helper to create a mock Claude message response."""
-    text_block = MagicMock()
-    text_block.type = "text"
-    text_block.text = text
+    """Helper to create a mock OpenAI chat completion response."""
     message = MagicMock()
-    message.content = [text_block]
-    return message
+    message.content = text
+    choice = MagicMock()
+    choice.message = message
+    completion = MagicMock()
+    completion.choices = [choice]
+    return completion
 
 
 def _make_empty_message_response():
-    """Helper to create a mock Claude response with empty content."""
-    message = MagicMock()
-    message.content = []
-    return message
+    """Helper to create a mock OpenAI response with no choices."""
+    completion = MagicMock()
+    completion.choices = []
+    return completion
 
 
 class TestLLMExtractionServiceExtract:
@@ -43,38 +48,38 @@ class TestLLMExtractionServiceExtract:
 
     @pytest.mark.asyncio
     async def test_extract_returns_raw_text_response(self, service, mock_client):
-        """Test that extract() returns the raw text from Claude's response."""
+        """Test that extract() returns the raw text from the model's response."""
         raw_json = '{"Nombre": "Juan Pérez", "Edad": "35"}'
-        mock_client.messages.create = AsyncMock(
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_message_response(raw_json)
         )
 
         result = await service.extract("Extract fields from: mi nombre es Juan Pérez")
 
         assert result == raw_json
-        mock_client.messages.create.assert_called_once()
+        mock_client.chat.completions.create.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_extract_sends_prompt_to_claude(self, service, mock_client):
-        """Test that extract() sends the given prompt to Claude API."""
+    async def test_extract_sends_prompt_to_model(self, service, mock_client):
+        """Test that extract() sends the given prompt to the OpenAI API."""
         prompt = "Extract the following fields from the transcribed text..."
-        mock_client.messages.create = AsyncMock(
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_message_response('{"field": "value"}')
         )
 
         await service.extract(prompt)
 
-        call_args = mock_client.messages.create.call_args
+        call_args = mock_client.chat.completions.create.call_args
         assert call_args.kwargs["messages"] == [{"role": "user", "content": prompt}]
-        assert call_args.kwargs["model"] == "claude-sonnet-4-20250514"
+        assert call_args.kwargs["model"] == "gpt-4o-mini"
         assert call_args.kwargs["max_tokens"] == 1024
 
     @pytest.mark.asyncio
     async def test_extract_raises_invalid_response_on_empty_content(
         self, service, mock_client
     ):
-        """Test that LLMInvalidResponseError is raised when response has no content."""
-        mock_client.messages.create = AsyncMock(
+        """Test that LLMInvalidResponseError is raised when response has no choices."""
+        mock_client.chat.completions.create = AsyncMock(
             return_value=_make_empty_message_response()
         )
 
@@ -88,13 +93,9 @@ class TestLLMExtractionServiceExtract:
         self, service, mock_client
     ):
         """Test that LLMInvalidResponseError is raised for whitespace-only responses."""
-        text_block = MagicMock()
-        text_block.type = "text"
-        text_block.text = "   \n  \t  "
-        message = MagicMock()
-        message.content = [text_block]
-
-        mock_client.messages.create = AsyncMock(return_value=message)
+        mock_client.chat.completions.create = AsyncMock(
+            return_value=_make_message_response("   \n  \t  ")
+        )
 
         with pytest.raises(LLMInvalidResponseError) as exc_info:
             await service.extract("some prompt")
@@ -106,8 +107,8 @@ class TestLLMExtractionServiceExtract:
         self, service, mock_client
     ):
         """Test that LLMUnavailableError is raised on connection errors after retries."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APIConnectionError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIConnectionError(request=MagicMock())
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -116,13 +117,13 @@ class TestLLMExtractionServiceExtract:
 
         assert exc_info.value.error_code == "LLM_UNAVAILABLE"
         # Should have been called 3 times (1 initial + 2 retries)
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_extract_retries_on_timeout_error(self, service, mock_client):
         """Test that LLMUnavailableError is raised on timeout errors after retries."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APITimeoutError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APITimeoutError(request=MagicMock())
         )
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
@@ -130,7 +131,7 @@ class TestLLMExtractionServiceExtract:
                 await service.extract("some prompt")
 
         assert exc_info.value.error_code == "LLM_UNAVAILABLE"
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_extract_retries_on_5xx_server_error(self, service, mock_client):
@@ -139,28 +140,28 @@ class TestLLMExtractionServiceExtract:
         error_response.status_code = 500
         error_response.json.return_value = {"error": {"message": "Internal Server Error"}}
 
-        server_error = anthropic.InternalServerError(
+        server_error = openai.InternalServerError(
             message="Internal Server Error",
             response=error_response,
             body={"error": {"message": "Internal Server Error"}},
         )
 
-        mock_client.messages.create = AsyncMock(side_effect=server_error)
+        mock_client.chat.completions.create = AsyncMock(side_effect=server_error)
 
         with patch("asyncio.sleep", new_callable=AsyncMock):
             with pytest.raises(LLMUnavailableError):
                 await service.extract("some prompt")
 
-        assert mock_client.messages.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
     @pytest.mark.asyncio
     async def test_extract_succeeds_after_transient_failure(self, service, mock_client):
         """Test that extract succeeds if a retry attempt succeeds."""
         raw_json = '{"Nombre": "Ana"}'
 
-        mock_client.messages.create = AsyncMock(
+        mock_client.chat.completions.create = AsyncMock(
             side_effect=[
-                anthropic.APIConnectionError(request=MagicMock()),
+                openai.APIConnectionError(request=MagicMock()),
                 _make_message_response(raw_json),
             ]
         )
@@ -169,13 +170,13 @@ class TestLLMExtractionServiceExtract:
             result = await service.extract("some prompt")
 
         assert result == raw_json
-        assert mock_client.messages.create.call_count == 2
+        assert mock_client.chat.completions.create.call_count == 2
 
     @pytest.mark.asyncio
     async def test_extract_uses_exponential_backoff_delays(self, service, mock_client):
         """Test that retry delays follow exponential backoff (1s, 3s)."""
-        mock_client.messages.create = AsyncMock(
-            side_effect=anthropic.APIConnectionError(request=MagicMock())
+        mock_client.chat.completions.create = AsyncMock(
+            side_effect=openai.APIConnectionError(request=MagicMock())
         )
 
         sleep_calls = []
@@ -196,19 +197,19 @@ class TestLLMExtractionServiceExtract:
         error_response.status_code = 401
         error_response.json.return_value = {"error": {"message": "Unauthorized"}}
 
-        auth_error = anthropic.AuthenticationError(
+        auth_error = openai.AuthenticationError(
             message="Unauthorized",
             response=error_response,
             body={"error": {"message": "Unauthorized"}},
         )
 
-        mock_client.messages.create = AsyncMock(side_effect=auth_error)
+        mock_client.chat.completions.create = AsyncMock(side_effect=auth_error)
 
         with pytest.raises(LLMUnavailableError):
             await service.extract("some prompt")
 
         # Should NOT retry - only 1 call
-        assert mock_client.messages.create.call_count == 1
+        assert mock_client.chat.completions.create.call_count == 1
 
 
 class TestLLMExtractionServiceTransientErrors:
@@ -216,12 +217,12 @@ class TestLLMExtractionServiceTransientErrors:
 
     def test_connection_error_is_transient(self, service):
         """APIConnectionError should be considered transient."""
-        error = anthropic.APIConnectionError(request=MagicMock())
+        error = openai.APIConnectionError(request=MagicMock())
         assert service._is_transient_error(error) is True
 
     def test_timeout_error_is_transient(self, service):
         """APITimeoutError should be considered transient."""
-        error = anthropic.APITimeoutError(request=MagicMock())
+        error = openai.APITimeoutError(request=MagicMock())
         assert service._is_transient_error(error) is True
 
     def test_5xx_error_is_transient(self, service):
@@ -230,7 +231,7 @@ class TestLLMExtractionServiceTransientErrors:
         response.status_code = 503
         response.json.return_value = {"error": {"message": "Service Unavailable"}}
 
-        error = anthropic.APIStatusError(
+        error = openai.APIStatusError(
             message="Service Unavailable",
             response=response,
             body={"error": {"message": "Service Unavailable"}},
@@ -243,7 +244,7 @@ class TestLLMExtractionServiceTransientErrors:
         response.status_code = 400
         response.json.return_value = {"error": {"message": "Bad Request"}}
 
-        error = anthropic.APIStatusError(
+        error = openai.APIStatusError(
             message="Bad Request",
             response=response,
             body={"error": {"message": "Bad Request"}},

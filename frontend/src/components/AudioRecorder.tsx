@@ -66,7 +66,12 @@ export function AudioRecorder({
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const status = externalStatus ?? internalStatus;
+  // The recording lifecycle is owned internally: while we're actively
+  // recording, that state must win so the button shows "Detener" and can stop.
+  // For every other phase we let the parent override (e.g. force 'processing'
+  // during transcription, or reset back to 'idle' afterwards).
+  const status =
+    internalStatus === 'recording' ? 'recording' : externalStatus ?? internalStatus;
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);

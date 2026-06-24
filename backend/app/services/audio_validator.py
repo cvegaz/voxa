@@ -70,8 +70,16 @@ class AudioValidator:
         return ValidationResult(is_valid=True)
 
     def _validate_mime_type(self, content_type: str | None) -> ValidationResult:
-        """Check that the MIME type is in the allowed set."""
-        if content_type is None or content_type not in self.ALLOWED_MIME_TYPES:
+        """Check that the MIME type is in the allowed set.
+
+        Browsers append codec parameters to the MIME type (e.g.
+        "audio/webm;codecs=opus"), so we compare only the base type that
+        precedes any ";" parameter.
+        """
+        base_type = (
+            content_type.split(";")[0].strip().lower() if content_type else None
+        )
+        if base_type is None or base_type not in self.ALLOWED_MIME_TYPES:
             allowed = ", ".join(sorted(self.ALLOWED_MIME_TYPES))
             return ValidationResult(
                 is_valid=False,

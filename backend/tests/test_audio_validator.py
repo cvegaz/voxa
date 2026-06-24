@@ -52,6 +52,18 @@ class TestAudioValidatorMimeType:
         result = self.validator.validate(file, duration=5.0)
         assert result.is_valid is True
 
+    def test_valid_webm_with_codecs_parameter(self):
+        """Browsers send 'audio/webm;codecs=opus'; the codec parameter must be ignored."""
+        file = _create_audio_upload(content_type="audio/webm;codecs=opus")
+        result = self.validator.validate(file, duration=5.0)
+        assert result.is_valid is True
+
+    def test_valid_ogg_with_codecs_parameter(self):
+        """The codec parameter must be ignored for ogg too."""
+        file = _create_audio_upload(content_type="audio/ogg; codecs=opus")
+        result = self.validator.validate(file, duration=5.0)
+        assert result.is_valid is True
+
     def test_invalid_text_mime_type(self):
         file = _create_audio_upload(content_type="text/plain")
         result = self.validator.validate(file, duration=5.0)

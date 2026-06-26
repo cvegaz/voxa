@@ -46,7 +46,7 @@ flowchart LR
 The backend follows a strict layered design (`routes` → `services` →
 `repositories` → `models`). The browser only ever calls relative `/api/...` paths,
 which Nginx (prod) or the Vite dev server (dev) proxy to the backend. See the
-[Architecture Decision Records](Docs/adr/README.md) for the reasoning behind these
+[Architecture Decision Records](docs/adr/README.md) for the reasoning behind these
 choices.
 
 ## Quick start (Docker)
@@ -106,7 +106,7 @@ cd frontend && npm test      # frontend suite (vitest)
 ```
 
 Voxa is developed test-first: each service and endpoint has a corresponding test
-(see [ADR-0009](Docs/adr/0009-test-driven-development.md)).
+(see [ADR-0009](docs/adr/0009-test-driven-development.md)).
 
 ## Project structure
 
@@ -132,7 +132,7 @@ llm-extraction-excel-output
 
 ## Documentation
 
-- **Architecture decisions**: [`Docs/adr/`](Docs/adr/README.md) — the *why* behind the design.
+- **Architecture decisions**: [`docs/adr/`](docs/adr/README.md) — the *why* behind the design.
 - **Module specs**: `.kiro/specs/` (requirements, design, tasks per module).
 - **Contributor guide**: [`CLAUDE.md`](CLAUDE.md) — conventions and commands.
 - **Roadmap**: [`todo.md`](todo.md) — planned features and the publishing/deployment plan.

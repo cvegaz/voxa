@@ -77,7 +77,7 @@ The OpenAI services (`whisper_service`, `llm_extraction_service`, `llm_enrichmen
 
 ## Notes
 
-- Architecture decisions and their rationale are recorded as ADRs in `Docs/adr/` (start at `Docs/adr/README.md`). When making a non-trivial design decision, add a new ADR.
+- Architecture decisions and their rationale are recorded as ADRs in `docs/adr/` (start at `docs/adr/README.md`). When making a non-trivial design decision, add a new ADR.
 - Detailed design specs are in `.kiro/specs/` (three modules: excel-template-loader, audio-transcription-controls, llm-extraction-excel-output).
 - Pending items and the publishing/deployment roadmap are in `todo.md`.
 - The folder's historical name was `my-data-app`; some old references may remain (e.g., comments in `docker-compose.yml`).

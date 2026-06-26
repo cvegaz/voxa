@@ -2,23 +2,23 @@
 
 ## Overview
 
-Este módulo gestiona la carga, validación y análisis de archivos Excel (.xlsx) que actúan como plantillas de datos. El flujo principal es:
+This module handles the loading, validation, and analysis of Excel files (.xlsx) that act as data templates. The main flow is:
 
-1. El usuario sube un archivo `.xlsx` desde el frontend (React).
-2. El backend (FastAPI) recibe el archivo, lo valida estructuralmente (extensión, máximo 8 columnas, filas 1-3 completas).
-3. Si es válido, extrae el esquema (nombres, tipos, ejemplos) y convierte el contenido a un DataFrame de pandas.
-4. El frontend muestra la pantalla de confirmación del esquema.
-5. El usuario escribe un contexto descriptivo (50-3000 caracteres).
-6. Al confirmar, el backend envía el contexto + esquema a la API de Anthropic Claude para generar el Contexto_Enriquecido.
-7. El Contexto_Enriquecido se persiste en PostgreSQL y queda disponible para los demás módulos.
+1. The user uploads an `.xlsx` file from the frontend (React).
+2. The backend (FastAPI) receives the file and validates it structurally (extension, maximum 8 columns, rows 1-3 complete).
+3. If it is valid, it extracts the schema (names, types, examples) and converts the content to a pandas DataFrame.
+4. The frontend shows the schema confirmation screen.
+5. The user writes a descriptive context (50-3000 characters).
+6. On confirmation, the backend sends the context + schema to the OpenAI API to generate the Contexto_Enriquecido.
+7. The Contexto_Enriquecido is persisted in PostgreSQL and becomes available to the other modules.
 
-### Decisiones clave de diseño
+### Key design decisions
 
-- **openpyxl** para lectura del .xlsx (librería estándar del ecosistema Python para Excel).
-- **pandas** como formato interno de procesamiento (DataFrame).
-- El archivo .xlsx no se almacena en disco; se procesa en memoria y se descarta tras la conversión.
-- El esquema y contexto enriquecido se persisten en PostgreSQL para que los módulos `audio-transcription-controls` y `llm-extraction-excel-output` los consuman.
-- La validación es fail-fast: se rechaza al primer error estructural encontrado.
+- **openpyxl** for reading the .xlsx (the standard library in the Python ecosystem for Excel).
+- **pandas** as the internal processing format (DataFrame).
+- The .xlsx file is not stored on disk; it is processed in memory and discarded after conversion.
+- The schema and enriched context are persisted in PostgreSQL so that the `audio-transcription-controls` and `llm-extraction-excel-output` modules can consume them.
+- Validation is fail-fast: the file is rejected at the first structural error found.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ flowchart TD
 
     subgraph External [External Services]
         L[(PostgreSQL - db_audio_excel)]
-        M[Anthropic Claude API]
+        M[OpenAI API]
     end
 
     A -->|multipart/form-data| D
@@ -51,37 +51,37 @@ flowchart TD
     K -->|persist| L
 ```
 
-### Flujo de datos
+### Data flow
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuario
+    participant U as User
     participant FE as React Frontend
     participant BE as FastAPI Backend
-    participant Claude as Claude API
+    participant LLM as OpenAI API
     participant DB as PostgreSQL
 
-    U->>FE: Selecciona archivo .xlsx
+    U->>FE: Selects .xlsx file
     FE->>BE: POST /api/templates/upload (file)
-    BE->>BE: Validar extensión, filas, columnas
-    alt Archivo inválido
-        BE-->>FE: 422 con mensaje de error
-        FE-->>U: Muestra error
-    else Archivo válido
-        BE->>BE: Extraer esquema + convertir a DataFrame
-        BE->>DB: Guardar template_session (estado: pending)
-        BE-->>FE: 200 con esquema + session_id
-        FE-->>U: Muestra Pantalla_Esquema
+    BE->>BE: Validate extension, rows, columns
+    alt Invalid file
+        BE-->>FE: 422 with error message
+        FE-->>U: Shows error
+    else Valid file
+        BE->>BE: Extract schema + convert to DataFrame
+        BE->>DB: Save template_session (status: pending)
+        BE-->>FE: 200 with schema + session_id
+        FE-->>U: Shows Pantalla_Esquema
     end
 
-    U->>FE: Escribe Contexto_Excel + Confirmar
+    U->>FE: Writes Contexto_Excel + Confirm
     FE->>BE: POST /api/templates/confirm (session_id, context)
-    BE->>BE: Validar contexto (50-3000 chars)
-    BE->>Claude: Generar Contexto_Enriquecido
-    Claude-->>BE: Contexto_Enriquecido
-    BE->>DB: Actualizar session (enriched_context, estado: confirmed)
-    BE-->>FE: 200 con Contexto_Enriquecido
-    FE-->>U: Habilita controles de grabación
+    BE->>BE: Validate context (50-3000 chars)
+    BE->>LLM: Generate Contexto_Enriquecido
+    LLM-->>BE: Contexto_Enriquecido
+    BE->>DB: Update session (enriched_context, status: confirmed)
+    BE-->>FE: 200 with Contexto_Enriquecido
+    FE-->>U: Enables recording controls
 ```
 
 ## Components and Interfaces
@@ -90,7 +90,7 @@ sequenceDiagram
 
 #### 1. `ExcelValidator` (service)
 
-Responsable de todas las validaciones estructurales del archivo.
+Responsible for all structural validations of the file.
 
 ```python
 class ExcelValidator:
@@ -98,35 +98,35 @@ class ExcelValidator:
     ALLOWED_EXTENSIONS = {".xlsx"}
 
     def validate(self, file: UploadFile) -> ValidationResult:
-        """Valida extensión, estructura y contenido del archivo."""
+        """Validates the file's extension, structure, and content."""
         ...
 ```
 
 #### 2. `SchemaExtractor` (service)
 
-Extrae el Esquema_Columnas de las primeras 3 filas.
+Extracts the Esquema_Columnas from the first 3 rows.
 
 ```python
 class SchemaExtractor:
     def extract(self, workbook: Workbook) -> ColumnSchema:
-        """Lee filas 1-3 y construye el esquema."""
+        """Reads rows 1-3 and builds the schema."""
         ...
 ```
 
 #### 3. `DataFrameConverter` (service)
 
-Convierte el contenido del Excel a DataFrame de pandas.
+Converts the Excel content to a pandas DataFrame.
 
 ```python
 class DataFrameConverter:
     def convert(self, workbook: Workbook, schema: ColumnSchema) -> pd.DataFrame:
-        """Convierte el Excel completo a DataFrame usando el esquema extraído."""
+        """Converts the full Excel file to a DataFrame using the extracted schema."""
         ...
 ```
 
 #### 4. `ContextValidator` (service)
 
-Valida el Contexto_Excel del usuario.
+Validates the user's Contexto_Excel.
 
 ```python
 class ContextValidator:
@@ -134,43 +134,43 @@ class ContextValidator:
     MAX_LENGTH = 3000
 
     def validate(self, context: str) -> ValidationResult:
-        """Valida longitud del contexto."""
+        """Validates the context length."""
         ...
 ```
 
 #### 5. `LLMEnrichmentService` (service)
 
-Orquesta la llamada a Claude para generar el Contexto_Enriquecido.
+Orchestrates the call to the model to generate the Contexto_Enriquecido.
 
 ```python
 class LLMEnrichmentService:
     def enrich(self, context: str, schema: ColumnSchema) -> str:
-        """Envía contexto + esquema a Claude y retorna el Contexto_Enriquecido."""
+        """Sends context + schema to the model and returns the Contexto_Enriquecido."""
         ...
 ```
 
 #### 6. `TemplateRepository` (repository)
 
-Persistencia en PostgreSQL.
+Persistence in PostgreSQL.
 
 ```python
 class TemplateRepository:
     async def create_session(self, schema: ColumnSchema, dataframe_json: str) -> str:
-        """Crea una sesión de template y retorna el session_id."""
+        """Creates a template session and returns the session_id."""
         ...
 
     async def confirm_session(self, session_id: str, enriched_context: str) -> None:
-        """Actualiza la sesión con el contexto enriquecido y estado confirmed."""
+        """Updates the session with the enriched context and sets status to confirmed."""
         ...
 
     async def get_active_session(self) -> Optional[TemplateSession]:
-        """Retorna la sesión activa confirmada."""
+        """Returns the active confirmed session."""
         ...
 ```
 
 ### API Endpoints
 
-| Método | Endpoint | Request | Response |
+| Method | Endpoint | Request | Response |
 |--------|----------|---------|----------|
 | POST | `/api/templates/upload` | `multipart/form-data` (file) | `{ session_id, schema }` |
 | POST | `/api/templates/confirm` | `{ session_id, context }` | `{ enriched_context }` |
@@ -181,23 +181,23 @@ class TemplateRepository:
 
 #### 1. `FileUpload`
 
-- Input file con filtro `.xlsx`
-- Drag & drop zone
-- Indicador de estado (idle, uploading, error)
-- Muestra mensajes de error de validación del backend
+- File input with an `.xlsx` filter
+- Drag-and-drop zone
+- Status indicator (idle, uploading, error)
+- Displays backend validation error messages
 
 #### 2. `SchemaConfirmation`
 
-- Tabla con columnas: #, Nombre, Tipo de Dato, Ejemplo
-- Botón "Confirmar"
-- Botón "Cambiar archivo"
+- Table with columns: #, Name, Data Type, Example
+- "Confirmar" button
+- "Cambiar archivo" button
 
 #### 3. `ContextInput`
 
-- Textarea multilínea con contador de caracteres (50-3000)
-- Validación en tiempo real del rango de caracteres
-- Indicador de progreso durante la generación del Contexto_Enriquecido
-- Botón "Confirmar y Continuar"
+- Multiline textarea with a character counter (50-3000)
+- Real-time validation of the character range
+- Progress indicator during Contexto_Enriquecido generation
+- "Confirmar y Continuar" button
 
 ## Data Models
 
@@ -351,54 +351,54 @@ interface ConfirmResponse {
 
 ## Error Handling
 
-### Categorías de errores
+### Error categories
 
-| Capa | Error | Código HTTP | Respuesta |
+| Layer | Error | HTTP code | Response |
 |------|-------|-------------|-----------|
-| Validación archivo | Extensión inválida | 422 | `{ detail: "...", error_code: "INVALID_EXTENSION" }` |
-| Validación archivo | Más de 8 columnas | 422 | `{ detail: "...", error_code: "TOO_MANY_COLUMNS" }` |
-| Validación archivo | Fila 1 sin nombres | 422 | `{ detail: "...", error_code: "EMPTY_HEADER_ROW" }` |
-| Validación archivo | Fila 2 incompleta | 422 | `{ detail: "...", error_code: "MISSING_DATA_TYPES" }` |
-| Validación archivo | Fila 3 incompleta | 422 | `{ detail: "...", error_code: "MISSING_EXAMPLES" }` |
-| Validación archivo | Archivo corrupto/ilegible | 422 | `{ detail: "...", error_code: "UNREADABLE_FILE" }` |
-| Validación contexto | Demasiado corto (<50) | 422 | `{ detail: "...", error_code: "CONTEXT_TOO_SHORT" }` |
-| Validación contexto | Demasiado largo (>3000) | 422 | `{ detail: "...", error_code: "CONTEXT_TOO_LONG" }` |
-| LLM | Error de red/timeout | 502 | `{ detail: "...", error_code: "LLM_UNAVAILABLE" }` |
-| LLM | Respuesta vacía o inválida | 502 | `{ detail: "...", error_code: "LLM_INVALID_RESPONSE" }` |
-| DB | Sesión no encontrada | 404 | `{ detail: "...", error_code: "SESSION_NOT_FOUND" }` |
-| DB | Error de conexión | 500 | `{ detail: "...", error_code: "DATABASE_ERROR" }` |
+| File validation | Invalid extension | 422 | `{ detail: "...", error_code: "INVALID_EXTENSION" }` |
+| File validation | More than 8 columns | 422 | `{ detail: "...", error_code: "TOO_MANY_COLUMNS" }` |
+| File validation | Row 1 without names | 422 | `{ detail: "...", error_code: "EMPTY_HEADER_ROW" }` |
+| File validation | Row 2 incomplete | 422 | `{ detail: "...", error_code: "MISSING_DATA_TYPES" }` |
+| File validation | Row 3 incomplete | 422 | `{ detail: "...", error_code: "MISSING_EXAMPLES" }` |
+| File validation | Corrupt/unreadable file | 422 | `{ detail: "...", error_code: "UNREADABLE_FILE" }` |
+| Context validation | Too short (<50) | 422 | `{ detail: "...", error_code: "CONTEXT_TOO_SHORT" }` |
+| Context validation | Too long (>3000) | 422 | `{ detail: "...", error_code: "CONTEXT_TOO_LONG" }` |
+| LLM | Network/timeout error | 502 | `{ detail: "...", error_code: "LLM_UNAVAILABLE" }` |
+| LLM | Empty or invalid response | 502 | `{ detail: "...", error_code: "LLM_INVALID_RESPONSE" }` |
+| DB | Session not found | 404 | `{ detail: "...", error_code: "SESSION_NOT_FOUND" }` |
+| DB | Connection error | 500 | `{ detail: "...", error_code: "DATABASE_ERROR" }` |
 
-### Estrategia de reintentos
+### Retry strategy
 
-- **Claude API**: Máximo 2 reintentos automáticos con backoff exponencial (1s, 3s) para errores transitorios (timeout, 5xx).
-- **PostgreSQL**: Sin reintentos automáticos; se reporta al usuario inmediatamente.
-- **Validación**: Sin reintentos — los errores de validación requieren corrección del usuario.
+- **OpenAI API**: At most 2 automatic retries with exponential backoff (1s, 3s) for transient errors (timeout, 5xx).
+- **PostgreSQL**: No automatic retries; reported to the user immediately.
+- **Validation**: No retries — validation errors require correction by the user.
 
-### Manejo en el Frontend
+### Frontend handling
 
-- Errores 422: Se muestran inline junto al componente que originó el error (upload zone, textarea).
-- Errores 5xx: Se muestran como toast/banner de error con opción "Reintentar".
-- Estado de loading: Skeleton/spinner durante upload y llamada a Claude.
-- Timeout del frontend: 30s para upload, 60s para enriquecimiento con Claude.
+- 422 errors: Shown inline next to the component that caused the error (upload zone, textarea).
+- 5xx errors: Shown as an error toast/banner with a "Retry" option.
+- Loading state: Skeleton/spinner during upload and the call to the model.
+- Frontend timeout: 30s for upload, 60s for enrichment with the model.
 
 ## Testing Strategy
 
 ### Unit Tests (pytest)
 
-Casos específicos y edge cases:
+Specific cases and edge cases:
 
-- Archivo con exactamente 8 columnas (límite válido) se acepta correctamente.
-- Archivo con columnas que contienen caracteres especiales en nombres (acentos, ñ, espacios).
-- Contexto con exactamente 50 caracteres es aceptado.
-- Contexto con exactamente 3000 caracteres es aceptado.
-- Respuesta de Claude se almacena correctamente en la sesión.
-- Sesión activa es consumible por otros módulos vía GET /api/templates/active.
+- A file with exactly 8 columns (the valid limit) is accepted correctly.
+- A file with columns whose names contain special characters (accents, ñ, spaces).
+- Context with exactly 50 characters is accepted.
+- Context with exactly 3000 characters is accepted.
+- The model's response is stored correctly in the session.
+- The active session is consumable by other modules via GET /api/templates/active.
 
 ### Property-Based Tests (Hypothesis)
 
-Se usará la librería **Hypothesis** para Python. Cada test se ejecutará con un mínimo de 100 iteraciones.
+The **Hypothesis** library for Python will be used. Each test will run with a minimum of 100 iterations.
 
-| Property | Descripción | Tag |
+| Property | Description | Tag |
 |----------|-------------|-----|
 | 1 | Schema extraction round-trip | `Feature: excel-template-loader, Property 1: Schema extraction round-trip` |
 | 2 | Files exceeding max columns rejected | `Feature: excel-template-loader, Property 2: Files exceeding maximum columns are rejected` |
@@ -410,14 +410,14 @@ Se usará la librería **Hypothesis** para Python. Cada test se ejecutará con u
 
 ### Integration Tests
 
-- Upload → schema confirmation → context → enrichment: flujo completo happy-path.
-- Llamada real a Claude API (con mock en CI, sin mock en prueba manual local).
-- Persistencia en PostgreSQL: crear sesión, confirmar, obtener activa.
-- Reemplazo de archivo: subir dos archivos, verificar estados en DB.
+- Upload → schema confirmation → context → enrichment: full happy-path flow.
+- Real call to the OpenAI API (mocked in CI, not mocked in local manual testing).
+- Persistence in PostgreSQL: create session, confirm, retrieve active.
+- File replacement: upload two files, verify statuses in the DB.
 
 ### Frontend Tests (Vitest + React Testing Library)
 
-- Renderizado de componentes (FileUpload, SchemaConfirmation, ContextInput).
-- Interacciones: selección de archivo, click en confirmar, click en cambiar.
-- Estados de error y loading.
-- Validación client-side del contador de caracteres.
+- Component rendering (FileUpload, SchemaConfirmation, ContextInput).
+- Interactions: file selection, clicking confirm, clicking change.
+- Error and loading states.
+- Client-side validation of the character counter.

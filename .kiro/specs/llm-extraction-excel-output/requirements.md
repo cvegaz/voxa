@@ -2,59 +2,59 @@
 
 ## Introduction
 
-Este módulo recibe el texto transcrito del módulo `audio-transcription-controls` y, usando el Esquema_Columnas confirmado por `excel-template-loader`, lo analiza mediante un modelo de lenguaje (LLM) para extraer los valores de cada campo. Los valores extraídos se insertan como una nueva fila en el archivo Excel y se muestran en tiempo real al usuario en una vista tabular al final de la pantalla principal.
+This module receives the transcribed text from the `audio-transcription-controls` module and, using the Esquema_Columnas confirmed by `excel-template-loader`, analyzes it with a large language model (LLM) to extract the values for each field. The extracted values are inserted as a new row in the Excel file and shown to the user in real time in a tabular view at the bottom of the main screen.
 
 ## Glossary
 
-- **Aplicacion**: El sistema de escritorio/web descrito en este documento.
-- **Esquema_Columnas**: Estructura detectada del archivo Excel activo (nombre, Tipo_Dato y Ejemplo_Valor por columna). Provista por el módulo `excel-template-loader`.
-- **Tipo_Dato**: Formato esperado del valor a extraer para una columna (ej: `texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`).
-- **Ejemplo_Valor**: Ilustración del tipo de contenido que puede aparecer en una narración de audio para un campo dado.
-- **Texto_Transcrito**: Texto de entrada proveniente del módulo `audio-transcription-controls`.
-- **LLM_Processor**: Componente que analiza el Texto_Transcrito usando el Esquema_Columnas para extraer los valores correspondientes a cada campo.
-- **Registro**: Conjunto de valores extraídos correspondientes a una fila del Archivo_Excel, con un valor (o vacío) por cada columna del Esquema_Columnas.
-- **Archivo_Excel**: Archivo `.xlsx` activo cargado por el módulo `excel-template-loader`. Los datos reales se añaden a partir de la fila 4.
-- **Vista_Excel**: Componente que muestra el contenido actual del Archivo_Excel en la interfaz de usuario.
-- **Pantalla_Principal**: Interfaz principal de la Aplicacion donde se realizan todas las interacciones del usuario.
+- **Aplicacion**: The desktop/web system described in this document.
+- **Esquema_Columnas**: Detected structure of the active Excel file (name, Tipo_Dato, and Ejemplo_Valor per column). Provided by the `excel-template-loader` module.
+- **Tipo_Dato**: Expected format of the value to be extracted for a column (e.g., `texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`).
+- **Ejemplo_Valor**: Illustration of the type of content that may appear in an audio narration for a given field.
+- **Texto_Transcrito**: Input text coming from the `audio-transcription-controls` module.
+- **LLM_Processor**: Component that analyzes the Texto_Transcrito using the Esquema_Columnas to extract the values corresponding to each field.
+- **Registro**: Set of extracted values corresponding to a row of the Archivo_Excel, with one value (or empty) for each column of the Esquema_Columnas.
+- **Archivo_Excel**: Active `.xlsx` file loaded by the `excel-template-loader` module. The actual data is added starting from row 4.
+- **Vista_Excel**: Component that displays the current content of the Archivo_Excel in the user interface.
+- **Pantalla_Principal**: Main interface of the Aplicacion where all user interactions take place.
 
 ---
 
 ## Requirements
 
-### Requirement 1: Extracción de campos mediante LLM
+### Requirement 1: Field extraction using an LLM
 
-**User Story:** Como usuario, quiero que la aplicación analice automáticamente el texto transcrito para extraer los datos correspondientes a las columnas de mi archivo Excel, usando los tipos de dato y ejemplos definidos en la plantilla para mejorar la precisión de la extracción.
+**User Story:** As a user, I want the application to automatically analyze the transcribed text to extract the data corresponding to the columns of my Excel file, using the data types and examples defined in the template to improve extraction accuracy.
 
 #### Acceptance Criteria
 
-1. WHEN el LLM_Processor recibe el Texto_Transcrito, THE LLM_Processor SHALL usar el Esquema_Columnas activo — incluyendo el nombre, Tipo_Dato y Ejemplo_Valor de cada columna — para construir el contexto de extracción enviado al modelo de lenguaje.
-2. WHEN el LLM_Processor analiza el Texto_Transcrito, THE LLM_Processor SHALL intentar identificar un valor para cada campo del Esquema_Columnas, usando el Tipo_Dato como restricción de formato y el Ejemplo_Valor como referencia del tipo de contenido esperado.
-3. WHEN el LLM_Processor completa el análisis del Texto_Transcrito, THE LLM_Processor SHALL construir un Registro con los valores extraídos, asignando un valor vacío a cualquier campo del Esquema_Columnas que no haya podido identificar.
-4. IF el LLM_Processor no puede identificar el valor de algún campo del Registro, THEN THE LLM_Processor SHALL asignar un valor vacío a ese campo y continuar con la construcción del Registro.
-5. IF el LLM_Processor recibe un Texto_Transcrito vacío, THEN THE Aplicacion SHALL mostrar un mensaje de error indicando que el texto no contiene información procesable y preservar el cuadro de texto en su estado actual.
-6. IF ocurre cualquier fallo durante el procesamiento del LLM, incluyendo errores de comunicación o errores de procesamiento interno, THEN THE Aplicacion SHALL mostrar un mensaje de error indicando la causa del fallo y preservar el Texto_Transcrito en el cuadro de texto para que el usuario pueda reintentar.
+1. WHEN the LLM_Processor receives the Texto_Transcrito, THE LLM_Processor SHALL use the active Esquema_Columnas — including the name, Tipo_Dato, and Ejemplo_Valor of each column — to build the extraction context sent to the language model.
+2. WHEN the LLM_Processor analyzes the Texto_Transcrito, THE LLM_Processor SHALL attempt to identify a value for each field of the Esquema_Columnas, using the Tipo_Dato as a format constraint and the Ejemplo_Valor as a reference for the expected type of content.
+3. WHEN the LLM_Processor completes the analysis of the Texto_Transcrito, THE LLM_Processor SHALL build a Registro with the extracted values, assigning an empty value to any field of the Esquema_Columnas that it could not identify.
+4. IF the LLM_Processor cannot identify the value of any field of the Registro, THEN THE LLM_Processor SHALL assign an empty value to that field and continue building the Registro.
+5. IF the LLM_Processor receives an empty Texto_Transcrito, THEN THE Aplicacion SHALL display an error message indicating that the text contains no processable information and preserve the text box in its current state.
+6. IF any failure occurs during LLM processing, including communication errors or internal processing errors, THEN THE Aplicacion SHALL display an error message indicating the cause of the failure and preserve the Texto_Transcrito in the text box so that the user can retry.
 
 ---
 
-### Requirement 2: Inserción y guardado en el archivo Excel
+### Requirement 2: Insertion and saving into the Excel file
 
-**User Story:** Como usuario, quiero que los datos extraídos se guarden automáticamente en el archivo Excel, para acumular todos los registros en el mismo archivo que cargué como plantilla.
+**User Story:** As a user, I want the extracted data to be saved automatically into the Excel file, so that all records accumulate in the same file I loaded as a template.
 
 #### Acceptance Criteria
 
-1. WHEN el LLM_Processor construye un Registro, THE Aplicacion SHALL añadir el Registro como una nueva fila al Archivo_Excel a partir de la fila 4, respetando el orden de columnas del Esquema_Columnas.
-2. WHEN el Archivo_Excel es actualizado con un nuevo Registro, THE Aplicacion SHALL guardar los cambios en el Archivo_Excel en disco, sobreescribiendo el archivo existente.
-3. IF ocurre un error al guardar el Archivo_Excel en disco, THEN THE Aplicacion SHALL mostrar un mensaje de error indicando la causa del fallo y que el Registro fue procesado pero no guardado en el archivo.
+1. WHEN the LLM_Processor builds a Registro, THE Aplicacion SHALL add the Registro as a new row to the Archivo_Excel starting from row 4, respecting the column order of the Esquema_Columnas.
+2. WHEN the Archivo_Excel is updated with a new Registro, THE Aplicacion SHALL save the changes to the Archivo_Excel on disk, overwriting the existing file.
+3. IF an error occurs while saving the Archivo_Excel to disk, THEN THE Aplicacion SHALL display an error message indicating the cause of the failure and that the Registro was processed but not saved to the file.
 
 ---
 
-### Requirement 3: Vista del Excel
+### Requirement 3: Excel view
 
-**User Story:** Como usuario, quiero ver el estado del Excel con los registros añadidos una vez que el procesamiento termine, para verificar que los datos se guardaron correctamente.
+**User Story:** As a user, I want to see the state of the Excel file with the added records once processing finishes, so that I can verify that the data was saved correctly.
 
 #### Acceptance Criteria
 
-1. THE Vista_Excel SHALL mostrar el contenido del Archivo_Excel en una tabla al final de la Pantalla_Principal, excluyendo las tres filas de cabecera de la plantilla.
-2. WHILE el LLM_Processor está procesando el Texto_Transcrito, THE Vista_Excel SHALL permanecer oculta o sin cambios, sin mostrar el progreso del procesamiento al usuario.
-3. WHEN el LLM_Processor completa el procesamiento y el Registro es añadido exitosamente al Archivo_Excel, THE Aplicacion SHALL actualizar la Vista_Excel con el contenido completo del Archivo_Excel (incluyendo el nuevo Registro) y presentarla al usuario.
-4. WHEN el módulo `excel-template-loader` confirma un Archivo_Excel válido, THE Vista_Excel SHALL mostrar todas las filas de datos existentes del archivo (fila 4 en adelante), incluyendo registros previamente guardados.
+1. THE Vista_Excel SHALL display the content of the Archivo_Excel in a table at the bottom of the Pantalla_Principal, excluding the three header rows of the template.
+2. WHILE the LLM_Processor is processing the Texto_Transcrito, THE Vista_Excel SHALL remain hidden or unchanged, without showing the user the processing progress.
+3. WHEN the LLM_Processor completes processing and the Registro is successfully added to the Archivo_Excel, THE Aplicacion SHALL update the Vista_Excel with the full content of the Archivo_Excel (including the new Registro) and present it to the user.
+4. WHEN the `excel-template-loader` module confirms a valid Archivo_Excel, THE Vista_Excel SHALL display all the existing data rows of the file (row 4 onward), including previously saved records.

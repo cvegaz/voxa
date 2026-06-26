@@ -5,7 +5,7 @@ import styles from './VistaExcel.module.css';
 export interface VistaExcelProps {
   /** Column definitions from the active ColumnSchema */
   columns: ColumnDef[];
-  /** Extraction records (data rows, fila 4+) */
+  /** Extraction records (data rows, row 4+) */
   records: ExtractionRecord[];
   /** Whether extraction processing is in progress */
   isLoading: boolean;

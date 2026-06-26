@@ -2,72 +2,72 @@
 
 ## Introduction
 
-Este módulo es responsable de la carga y validación de archivos Excel que actúan como plantillas de datos. La app acepta archivos Excel (.xlsx) como formato de entrada del usuario, pero internamente convierte el contenido a un formato tabular ligero (CSV/DataFrame) para procesamiento más eficiente. La exportación final también se genera en formato Excel. El archivo define el esquema de captura: la fila 1 contiene los nombres de columna, la fila 2 el tipo de dato esperado para cada campo, y la fila 3 un ejemplo de valor real obtenido de una narración de audio. La app valida que el archivo cumpla esta estructura (máximo 8 columnas), detecta el esquema y lo presenta al usuario para confirmación antes de continuar con cualquier otra operación.
+This module is responsible for loading and validating the Excel files that act as data templates. The app accepts Excel files (.xlsx) as the user's input format, but internally converts the content to a lightweight tabular format (CSV/DataFrame) for more efficient processing. The final export is also generated in Excel format. The file defines the capture schema: row 1 contains the column names, row 2 the expected data type for each field, and row 3 a real example value obtained from an audio narration. The app validates that the file conforms to this structure (maximum 8 columns), detects the schema, and presents it to the user for confirmation before continuing with any other operation.
 
 ## Glossary
 
-- **Aplicacion**: El sistema de escritorio/web descrito en este documento.
-- **Excel_Loader**: Componente responsable de cargar, validar y analizar el archivo Excel proporcionado por el usuario.
-- **Archivo_Excel**: Archivo con extensión `.xlsx` que actúa como plantilla. Sus primeras tres filas son de cabecera: fila 1 = nombres de columna, fila 2 = tipo de dato esperado, fila 3 = ejemplo de valor. Contiene entre 1 y 8 columnas. Los datos reales se añaden a partir de la fila 4.
-- **Esquema_Columnas**: Estructura detectada del Archivo_Excel al cargarlo. Para cada columna contiene: nombre (fila 1), tipo de dato (fila 2) y ejemplo de valor (fila 3). Tiene entre 1 y 8 entradas.
-- **Tipo_Dato**: Valor de la fila 2 del Archivo_Excel para una columna dada. Indica el formato esperado del valor a extraer (ej: `texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`).
-- **Ejemplo_Valor**: Valor de la fila 3 del Archivo_Excel para una columna dada. Ilustra el tipo de contenido que puede aparecer en una narración de audio para ese campo.
-- **Formato_Interno**: Representación tabular interna (CSV/DataFrame) a la que se convierte el Archivo_Excel tras su carga y validación. Se usa para todo el procesamiento de datos por ser más ligero y eficiente que operar directamente sobre el formato .xlsx.
-- **Pantalla_Esquema**: Pantalla o panel que se muestra tras cargar un Archivo_Excel válido, donde la app presenta el Esquema_Columnas detectado para que el usuario lo revise antes de continuar.
-- **Contexto_Excel**: Párrafo descriptivo proporcionado por el usuario que explica qué es el Excel, su historia y lo que contiene. Se usa como contexto adicional para el LLM_Processor. Tiene un límite máximo de una hoja de texto (aproximadamente 3000 caracteres).
-- **Contexto_Enriquecido**: Versión mejorada del Contexto_Excel generada por el LLM tras analizar el texto del usuario junto con el Esquema_Columnas y los datos de entrada del archivo. Se almacena internamente y se usa como contexto definitivo para la extracción de campos.
-- **Pantalla_Principal**: Interfaz principal de la Aplicacion donde se realizan todas las interacciones del usuario.
+- **Aplicacion**: The desktop/web system described in this document.
+- **Excel_Loader**: Component responsible for loading, validating, and analyzing the Excel file provided by the user.
+- **Archivo_Excel**: File with the `.xlsx` extension that acts as a template. Its first three rows are header rows: row 1 = column names, row 2 = expected data type, row 3 = example value. It contains between 1 and 8 columns. The actual data is added starting from row 4.
+- **Esquema_Columnas**: Structure detected from the Archivo_Excel when it is loaded. For each column it contains: name (row 1), data type (row 2), and example value (row 3). It has between 1 and 8 entries.
+- **Tipo_Dato**: Value in row 2 of the Archivo_Excel for a given column. It indicates the expected format of the value to be extracted (e.g., `texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`).
+- **Ejemplo_Valor**: Value in row 3 of the Archivo_Excel for a given column. It illustrates the type of content that may appear in an audio narration for that field.
+- **Formato_Interno**: Internal tabular representation (CSV/DataFrame) that the Archivo_Excel is converted to after it is loaded and validated. It is used for all data processing because it is lighter and more efficient than operating directly on the .xlsx format.
+- **Pantalla_Esquema**: Screen or panel shown after a valid Archivo_Excel is loaded, where the app presents the detected Esquema_Columnas for the user to review before continuing.
+- **Contexto_Excel**: Descriptive paragraph provided by the user that explains what the Excel file is, its history, and what it contains. It is used as additional context for the LLM_Processor. It has a maximum length of one page of text (approximately 3000 characters).
+- **Contexto_Enriquecido**: Improved version of the Contexto_Excel generated by the LLM after analyzing the user's text together with the Esquema_Columnas and the file's input data. It is stored internally and used as the definitive context for field extraction.
+- **Pantalla_Principal**: Main interface of the Aplicacion where all user interactions take place.
 
 ---
 
 ## Requirements
 
-### Requirement 1: Carga del archivo Excel
+### Requirement 1: Loading the Excel file
 
-**User Story:** Como usuario, quiero cargar un archivo Excel que actúe como plantilla con nombres de columna, tipos de dato y ejemplos de valor, para que la aplicación detecte automáticamente el esquema y lo use para extraer datos de mis narraciones de audio.
+**User Story:** As a user, I want to load an Excel file that acts as a template with column names, data types, and example values, so that the application automatically detects the schema and uses it to extract data from my audio narrations.
 
 #### Acceptance Criteria
 
-1. THE Excel_Loader SHALL presentar un control de carga de archivos en la Pantalla_Principal que permita al usuario seleccionar un archivo `.xlsx` desde el sistema de archivos.
-2. WHEN el usuario selecciona un archivo `.xlsx`, THE Excel_Loader SHALL leer las primeras tres filas del archivo para construir el Esquema_Columnas (fila 1 como nombres de columna, fila 2 como Tipo_Dato de cada columna, y fila 3 como Ejemplo_Valor de cada columna) y convertir el contenido completo del archivo a Formato_Interno (DataFrame) para todo procesamiento posterior.
-3. IF el archivo `.xlsx` cargado tiene más de 8 columnas, THEN THE Excel_Loader SHALL rechazar el archivo y mostrar un mensaje de error indicando que el archivo supera el límite de 8 columnas permitido en esta versión, sin alterar el Archivo_Excel previamente cargado.
-4. IF el archivo `.xlsx` cargado tiene la fila 1 vacía o sin ningún nombre de columna válido, THEN THE Excel_Loader SHALL rechazar el archivo y mostrar un mensaje de error indicando que no se encontraron nombres de columna en la primera fila, sin alterar el Archivo_Excel previamente cargado.
-5. IF el archivo `.xlsx` cargado tiene la fila 2 vacía para alguna columna, THEN THE Excel_Loader SHALL rechazar el archivo y mostrar un mensaje de error indicando que faltan los tipos de dato en la fila 2 para las columnas afectadas, sin alterar el Archivo_Excel previamente cargado.
-6. IF el archivo `.xlsx` cargado tiene la fila 3 vacía para alguna columna, THEN THE Excel_Loader SHALL rechazar el archivo y mostrar un mensaje de error indicando que faltan los ejemplos de valor en la fila 3 para las columnas afectadas, sin alterar el Archivo_Excel previamente cargado.
-7. IF el usuario selecciona un archivo que no tiene la extensión `.xlsx`, THEN THE Excel_Loader SHALL rechazar el archivo y mostrar un mensaje de error indicando que el formato no es compatible, sin alterar el Archivo_Excel previamente cargado.
-8. WHILE un Archivo_Excel válido está cargado, THE Aplicacion SHALL mantener el Formato_Interno (DataFrame) y el Esquema_Columnas disponibles para todas las operaciones de grabación y extracción de datos.
-9. WHEN el Excel_Loader valida exitosamente un Archivo_Excel, THE Excel_Loader SHALL convertir el contenido del archivo a Formato_Interno (DataFrame en memoria) y descartar la referencia directa al archivo .xlsx, utilizando únicamente el Formato_Interno para todas las operaciones subsiguientes de la Aplicacion.
-10. WHEN el usuario carga un Archivo_Excel nuevo mientras ya existe uno cargado, THE Excel_Loader SHALL reemplazar el Archivo_Excel anterior, actualizar el Esquema_Columnas y el Formato_Interno con el nuevo archivo y mostrar la Pantalla_Esquema nuevamente para confirmación.
+1. THE Excel_Loader SHALL present a file upload control on the Pantalla_Principal that allows the user to select an `.xlsx` file from the file system.
+2. WHEN the user selects an `.xlsx` file, THE Excel_Loader SHALL read the first three rows of the file to build the Esquema_Columnas (row 1 as column names, row 2 as the Tipo_Dato of each column, and row 3 as the Ejemplo_Valor of each column) and convert the entire file content to Formato_Interno (DataFrame) for all subsequent processing.
+3. IF the loaded `.xlsx` file has more than 8 columns, THEN THE Excel_Loader SHALL reject the file and show an error message indicating that the file exceeds the 8-column limit allowed in this version, without altering the previously loaded Archivo_Excel.
+4. IF the loaded `.xlsx` file has an empty row 1 or no valid column names, THEN THE Excel_Loader SHALL reject the file and show an error message indicating that no column names were found in the first row, without altering the previously loaded Archivo_Excel.
+5. IF the loaded `.xlsx` file has an empty row 2 for any column, THEN THE Excel_Loader SHALL reject the file and show an error message indicating that the data types are missing in row 2 for the affected columns, without altering the previously loaded Archivo_Excel.
+6. IF the loaded `.xlsx` file has an empty row 3 for any column, THEN THE Excel_Loader SHALL reject the file and show an error message indicating that the example values are missing in row 3 for the affected columns, without altering the previously loaded Archivo_Excel.
+7. IF the user selects a file that does not have the `.xlsx` extension, THEN THE Excel_Loader SHALL reject the file and show an error message indicating that the format is not supported, without altering the previously loaded Archivo_Excel.
+8. WHILE a valid Archivo_Excel is loaded, THE Aplicacion SHALL keep the Formato_Interno (DataFrame) and the Esquema_Columnas available for all recording and data extraction operations.
+9. WHEN the Excel_Loader successfully validates an Archivo_Excel, THE Excel_Loader SHALL convert the file content to Formato_Interno (in-memory DataFrame) and discard the direct reference to the .xlsx file, using only the Formato_Interno for all subsequent operations of the Aplicacion.
+10. WHEN the user loads a new Archivo_Excel while one is already loaded, THE Excel_Loader SHALL replace the previous Archivo_Excel, update the Esquema_Columnas and the Formato_Interno with the new file, and show the Pantalla_Esquema again for confirmation.
 
 ---
 
-### Requirement 2: Pantalla de confirmación del esquema
+### Requirement 2: Schema confirmation screen
 
-**User Story:** Como usuario, quiero ver el esquema detectado de mi archivo Excel (nombres de columna, tipos de dato y ejemplos) antes de empezar a grabar, para verificar que la aplicación interpretó correctamente mi plantilla.
+**User Story:** As a user, I want to see the detected schema of my Excel file (column names, data types, and examples) before I start recording, so that I can verify that the application interpreted my template correctly.
 
 #### Acceptance Criteria
 
-1. WHEN el Excel_Loader construye el Esquema_Columnas con éxito, THE Aplicacion SHALL mostrar la Pantalla_Esquema antes de habilitar los controles de grabación.
-2. THE Pantalla_Esquema SHALL mostrar una tabla con una fila por cada columna del Esquema_Columnas, indicando: número de columna, nombre, Tipo_Dato y Ejemplo_Valor.
-3. THE Pantalla_Esquema SHALL mostrar un botón "Confirmar" que permita al usuario aceptar el esquema y continuar.
-4. WHEN el usuario presiona el botón "Confirmar" en la Pantalla_Esquema, THE Aplicacion SHALL cerrar la Pantalla_Esquema y habilitar los controles de grabación de audio en la Pantalla_Principal.
-5. THE Pantalla_Esquema SHALL mostrar un botón "Cambiar archivo" que permita al usuario regresar al selector de archivo sin continuar con el esquema actual.
-6. WHEN el usuario presiona el botón "Cambiar archivo" en la Pantalla_Esquema, THE Aplicacion SHALL cerrar la Pantalla_Esquema, descartar el Archivo_Excel actual y presentar nuevamente el control de carga de archivos en la Pantalla_Principal.
+1. WHEN the Excel_Loader successfully builds the Esquema_Columnas, THE Aplicacion SHALL show the Pantalla_Esquema before enabling the recording controls.
+2. THE Pantalla_Esquema SHALL display a table with one row per column in the Esquema_Columnas, indicating: column number, name, Tipo_Dato, and Ejemplo_Valor.
+3. THE Pantalla_Esquema SHALL display a "Confirmar" button that allows the user to accept the schema and continue.
+4. WHEN the user presses the "Confirmar" button on the Pantalla_Esquema, THE Aplicacion SHALL close the Pantalla_Esquema and enable the audio recording controls on the Pantalla_Principal.
+5. THE Pantalla_Esquema SHALL display a "Cambiar archivo" button that allows the user to return to the file selector without continuing with the current schema.
+6. WHEN the user presses the "Cambiar archivo" button on the Pantalla_Esquema, THE Aplicacion SHALL close the Pantalla_Esquema, discard the current Archivo_Excel, and present the file upload control again on the Pantalla_Principal.
 
 ---
 
-### Requirement 3: Descripción contextual del Excel
+### Requirement 3: Contextual description of the Excel file
 
-**User Story:** Como usuario, quiero poder escribir un párrafo explicando qué es mi Excel, su historia y lo que contiene, para que el LLM tenga mejor contexto al extraer datos de mis narraciones de audio.
+**User Story:** As a user, I want to be able to write a paragraph explaining what my Excel file is, its history, and what it contains, so that the LLM has better context when extracting data from my audio narrations.
 
 #### Acceptance Criteria
 
-1. THE Aplicacion SHALL presentar un campo de texto multilínea en la Pantalla_Esquema (o en un paso previo a la confirmación) donde el usuario pueda ingresar el Contexto_Excel.
-2. THE Aplicacion SHALL validar que el Contexto_Excel no exceda el límite de una hoja de texto (máximo 3000 caracteres).
-3. IF el Contexto_Excel ingresado excede los 3000 caracteres, THEN THE Aplicacion SHALL mostrar un mensaje indicando que el texto supera el límite permitido y no permitir continuar hasta que se reduzca.
-4. THE Aplicacion SHALL validar que el Contexto_Excel tenga una extensión mínima suficiente (al menos 50 caracteres) para proveer contexto útil al LLM.
-5. IF el Contexto_Excel tiene menos de 50 caracteres, THEN THE Aplicacion SHALL mostrar un mensaje indicando que la descripción es demasiado corta y solicitar al usuario que la amplíe.
-6. WHEN el usuario confirma el Esquema_Columnas y ha proporcionado un Contexto_Excel válido, THE Aplicacion SHALL enviar el Contexto_Excel junto con el Esquema_Columnas y los datos de ejemplo (fila 3) al LLM para generar el Contexto_Enriquecido.
-7. WHEN el LLM genera el Contexto_Enriquecido, THE Aplicacion SHALL almacenar internamente el Contexto_Enriquecido y utilizarlo como contexto definitivo para todas las operaciones de extracción de campos subsiguientes, descartando el Contexto_Excel original del flujo de procesamiento.
-8. WHILE el LLM está generando el Contexto_Enriquecido, THE Aplicacion SHALL mostrar un indicador de progreso y no permitir avanzar a la grabación de audio hasta que el proceso finalice.
-9. IF ocurre un error al generar el Contexto_Enriquecido, THEN THE Aplicacion SHALL mostrar un mensaje de error descriptivo y permitir al usuario reintentar o editar el Contexto_Excel antes de continuar.
+1. THE Aplicacion SHALL present a multiline text field on the Pantalla_Esquema (or in a step prior to confirmation) where the user can enter the Contexto_Excel.
+2. THE Aplicacion SHALL validate that the Contexto_Excel does not exceed the one-page-of-text limit (maximum 3000 characters).
+3. IF the entered Contexto_Excel exceeds 3000 characters, THEN THE Aplicacion SHALL show a message indicating that the text exceeds the allowed limit and not allow continuing until it is shortened.
+4. THE Aplicacion SHALL validate that the Contexto_Excel has a sufficient minimum length (at least 50 characters) to provide useful context to the LLM.
+5. IF the Contexto_Excel has fewer than 50 characters, THEN THE Aplicacion SHALL show a message indicating that the description is too short and ask the user to expand it.
+6. WHEN the user confirms the Esquema_Columnas and has provided a valid Contexto_Excel, THE Aplicacion SHALL send the Contexto_Excel together with the Esquema_Columnas and the example data (row 3) to the LLM to generate the Contexto_Enriquecido.
+7. WHEN the LLM generates the Contexto_Enriquecido, THE Aplicacion SHALL store the Contexto_Enriquecido internally and use it as the definitive context for all subsequent field extraction operations, discarding the original Contexto_Excel from the processing flow.
+8. WHILE the LLM is generating the Contexto_Enriquecido, THE Aplicacion SHALL show a progress indicator and not allow advancing to audio recording until the process completes.
+9. IF an error occurs while generating the Contexto_Enriquecido, THEN THE Aplicacion SHALL show a descriptive error message and allow the user to retry or edit the Contexto_Excel before continuing.

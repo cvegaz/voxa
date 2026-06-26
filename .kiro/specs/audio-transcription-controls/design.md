@@ -2,29 +2,29 @@
 
 ## Overview
 
-Este módulo gestiona la grabación de audio del usuario desde el micrófono del navegador, el envío del audio al backend para su transcripción mediante OpenAI Whisper API, y los controles de flujo (Aceptar / Agregar nuevo) que conectan este módulo con el siguiente (`llm-extraction-excel-output`).
+This module handles recording the user's audio from the browser microphone, sending the audio to the backend for transcription via the OpenAI Whisper API, and the flow controls (Accept / Add new) that connect this module to the next one (`llm-extraction-excel-output`).
 
-### Flujo principal
+### Main flow
 
-1. El usuario presiona "Grabar" en el frontend React.
-2. El navegador solicita permiso de micrófono (si no fue concedido) y comienza a capturar audio con la MediaRecorder API.
-3. El usuario detiene la grabación (o se auto-detiene a los 30 segundos).
-4. El frontend envía el blob de audio al backend como `multipart/form-data`.
-5. El backend valida la duración (mínimo 1s, máximo 30s) y envía el audio a OpenAI Whisper API.
-6. Whisper retorna el texto transcrito; el backend lo persiste en PostgreSQL y lo devuelve al frontend.
-7. El usuario puede editar el texto transcrito en un cuadro de texto editable.
-8. "Aceptar" envía el texto al módulo `llm-extraction-excel-output`.
-9. "Agregar nuevo" limpia el texto y restablece el grabador para una nueva iteración.
+1. The user presses "Grabar" in the React frontend.
+2. The browser requests microphone permission (if not already granted) and starts capturing audio with the MediaRecorder API.
+3. The user stops the recording (or it auto-stops at 30 seconds).
+4. The frontend sends the audio blob to the backend as `multipart/form-data`.
+5. The backend validates the duration (minimum 1s, maximum 30s) and sends the audio to the OpenAI Whisper API.
+6. Whisper returns the transcribed text; the backend persists it in PostgreSQL and returns it to the frontend.
+7. The user can edit the transcribed text in an editable text box.
+8. "Aceptar" sends the text to the `llm-extraction-excel-output` module.
+9. "Agregar nuevo" clears the text and resets the recorder for a new iteration.
 
-### Decisiones clave de diseño
+### Key design decisions
 
-- **MediaRecorder API** en el frontend para captura de audio (soporte nativo en navegadores modernos, sin dependencias externas).
-- **Formato de audio**: `audio/webm;codecs=opus` como formato preferido (eficiente, soportado por Whisper). Fallback a `audio/ogg` si webm no está disponible.
-- **El audio NO se persiste en disco ni en base de datos**: se procesa en memoria y se descarta tras la transcripción.
-- **El texto transcrito sí se persiste** en PostgreSQL como parte de la sesión de transcripción, para trazabilidad y para permitir el envío al módulo downstream.
-- **Validación de duración**: se realiza tanto en frontend (UX inmediata) como en backend (seguridad).
-- **OpenAI Whisper API** (`whisper-1`) para la transcripción. Modelo único, sin configuración de idioma (auto-detect).
-- Se reutiliza el patrón de sesión del módulo `excel-template-loader` (UUID, estados, timestamps).
+- **MediaRecorder API** in the frontend for audio capture (natively supported in modern browsers, no external dependencies).
+- **Audio format**: `audio/webm;codecs=opus` as the preferred format (efficient, supported by Whisper). Fallback to `audio/ogg` if webm is not available.
+- **Audio is NOT persisted on disk or in the database**: it is processed in memory and discarded after transcription.
+- **The transcribed text IS persisted** in PostgreSQL as part of the transcription session, for traceability and to enable sending it to the downstream module.
+- **Duration validation**: performed both in the frontend (immediate UX) and in the backend (security).
+- **OpenAI Whisper API** (`whisper-1`) for transcription. A single model, with no language configuration (auto-detect).
+- The session pattern from the `excel-template-loader` module is reused (UUID, statuses, timestamps).
 
 ## Architecture
 
@@ -57,58 +57,58 @@ flowchart TD
     G -->|persist| M
     J -->|persist| M
     H -->|text| P
-    O -->|Esquema_Columnas confirmado| I
+    O -->|Esquema_Columnas confirmed| I
 ```
 
-### Flujo de datos
+### Data flow
 
 ```mermaid
 sequenceDiagram
-    participant U as Usuario
+    participant U as User
     participant FE as React Frontend
     participant BE as FastAPI Backend
     participant Whisper as OpenAI Whisper API
     participant DB as PostgreSQL
     participant LLM as llm-extraction module
 
-    Note over FE: Prerequisito: Esquema_Columnas confirmado
+    Note over FE: Prerequisite: Esquema_Columnas confirmed
 
-    U->>FE: Presiona "Grabar"
-    FE->>FE: Solicita permiso micrófono
-    FE->>FE: MediaRecorder inicia captura
+    U->>FE: Presses "Grabar"
+    FE->>FE: Requests microphone permission
+    FE->>FE: MediaRecorder starts capture
     
-    alt Usuario detiene manualmente
-        U->>FE: Presiona "Grabar" (stop)
+    alt User stops manually
+        U->>FE: Presses "Grabar" (stop)
     else Auto-stop 30s
-        FE->>FE: Timer alcanza 30s → stop
+        FE->>FE: Timer reaches 30s → stop
     end
     
-    FE->>FE: Valida duración >= 1s
-    alt Duración < 1s
-        FE-->>U: Error "Audio demasiado corto"
-    else Duración válida
+    FE->>FE: Validates duration >= 1s
+    alt Duration < 1s
+        FE-->>U: Error "Audio too short"
+    else Valid duration
         FE->>BE: POST /api/transcriptions/transcribe (audio blob)
-        BE->>BE: Validar duración y formato
-        BE->>Whisper: Enviar audio para transcripción
-        Whisper-->>BE: Texto transcrito
-        BE->>DB: Guardar transcription_session
+        BE->>BE: Validate duration and format
+        BE->>Whisper: Send audio for transcription
+        Whisper-->>BE: Transcribed text
+        BE->>DB: Save transcription_session
         BE-->>FE: 200 { transcription_id, text }
-        FE-->>U: Muestra texto en cuadro editable
+        FE-->>U: Shows text in editable box
     end
 
-    U->>FE: Edita texto (opcional)
+    U->>FE: Edits text (optional)
     
-    alt Presiona "Aceptar"
+    alt Presses "Aceptar"
         FE->>BE: POST /api/transcriptions/accept { transcription_id, text }
-        BE->>BE: Validar esquema confirmado + texto no vacío
-        BE->>DB: Actualizar estado → accepted
+        BE->>BE: Validate confirmed schema + non-empty text
+        BE->>DB: Update status → accepted
         BE-->>FE: 200 { status: "accepted" }
-        FE->>LLM: Trigger procesamiento LLM
-    else Presiona "Agregar nuevo"
+        FE->>LLM: Trigger LLM processing
+    else Presses "Agregar nuevo"
         FE->>BE: POST /api/transcriptions/reset { transcription_id }
-        BE->>DB: Actualizar estado → discarded
+        BE->>DB: Update status → discarded
         BE-->>FE: 200 { status: "reset" }
-        FE-->>U: Limpia cuadro texto, restablece grabador
+        FE-->>U: Clears text box, resets recorder
     end
 ```
 
@@ -118,7 +118,7 @@ sequenceDiagram
 
 #### 1. `AudioValidator` (service)
 
-Valida el audio recibido antes de enviarlo a Whisper.
+Validates the received audio before sending it to Whisper.
 
 ```python
 class AudioValidator:
@@ -127,60 +127,60 @@ class AudioValidator:
     ALLOWED_MIME_TYPES = {"audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"}
 
     def validate(self, file: UploadFile, duration: float) -> ValidationResult:
-        """Valida MIME type y duración del audio."""
+        """Validates the audio's MIME type and duration."""
         ...
 ```
 
 #### 2. `WhisperTranscriptionService` (service)
 
-Orquesta la llamada a OpenAI Whisper API.
+Orchestrates the call to the OpenAI Whisper API.
 
 ```python
 class WhisperTranscriptionService:
     MODEL = "whisper-1"
 
     async def transcribe(self, audio_file: bytes, mime_type: str) -> str:
-        """Envía el audio a Whisper API y retorna el texto transcrito."""
+        """Sends the audio to the Whisper API and returns the transcribed text."""
         ...
 ```
 
 #### 3. `AcceptanceValidator` (service)
 
-Valida las precondiciones para aceptar un texto transcrito.
+Validates the preconditions for accepting a transcribed text.
 
 ```python
 class AcceptanceValidator:
     async def validate(self, transcription_id: UUID, text: str) -> ValidationResult:
-        """Verifica que existe texto no vacío y un Esquema_Columnas confirmado."""
+        """Verifies that non-empty text and a confirmed Esquema_Columnas exist."""
         ...
 ```
 
 #### 4. `TranscriptionRepository` (repository)
 
-Persistencia de sesiones de transcripción en PostgreSQL.
+Persistence of transcription sessions in PostgreSQL.
 
 ```python
 class TranscriptionRepository:
     async def create_session(self, text: str, duration_seconds: float) -> UUID:
-        """Crea una sesión de transcripción y retorna el ID."""
+        """Creates a transcription session and returns the ID."""
         ...
 
     async def accept_session(self, transcription_id: UUID, final_text: str) -> None:
-        """Marca la sesión como aceptada con el texto final (posiblemente editado)."""
+        """Marks the session as accepted with the final (possibly edited) text."""
         ...
 
     async def discard_session(self, transcription_id: UUID) -> None:
-        """Marca la sesión como descartada."""
+        """Marks the session as discarded."""
         ...
 
     async def get_session(self, transcription_id: UUID) -> Optional[TranscriptionSession]:
-        """Obtiene una sesión por ID."""
+        """Retrieves a session by ID."""
         ...
 ```
 
 ### API Endpoints
 
-| Método | Endpoint | Request | Response |
+| Method | Endpoint | Request | Response |
 |--------|----------|---------|----------|
 | POST | `/api/transcriptions/transcribe` | `multipart/form-data` (audio file + duration) | `{ transcription_id, text }` |
 | POST | `/api/transcriptions/accept` | `{ transcription_id, text }` | `{ status: "accepted" }` |
@@ -191,14 +191,14 @@ class TranscriptionRepository:
 
 #### 1. `AudioRecorder`
 
-Componente que maneja la captura de audio con MediaRecorder API.
+Component that handles audio capture with the MediaRecorder API.
 
-- Botón "Grabar" con estados: idle, recording, processing
-- Indicador visual de grabación activa (animación de pulso rojo)
-- Timer visible que muestra duración actual
-- Auto-stop a los 30 segundos
-- Validación client-side de duración mínima (1s)
-- Manejo de permisos de micrófono (solicitud, denegación, error hardware)
+- "Grabar" button with states: idle, recording, processing
+- Visual indicator of active recording (red pulse animation)
+- Visible timer showing the current duration
+- Auto-stop at 30 seconds
+- Client-side validation of the minimum duration (1s)
+- Microphone permission handling (request, denial, hardware error)
 
 ```typescript
 interface AudioRecorderState {
@@ -210,12 +210,12 @@ interface AudioRecorderState {
 
 #### 2. `TranscriptionDisplay`
 
-Cuadro de texto editable que muestra el resultado de la transcripción.
+Editable text box that displays the transcription result.
 
-- Textarea editable con el texto transcrito
-- Indicador de progreso durante la transcripción (spinner)
-- Estado vacío por defecto
-- El texto editado por el usuario es el que se envía en "Aceptar"
+- Editable textarea with the transcribed text
+- Progress indicator during transcription (spinner)
+- Empty state by default
+- The text edited by the user is what is sent on "Aceptar"
 
 ```typescript
 interface TranscriptionDisplayProps {
@@ -228,12 +228,12 @@ interface TranscriptionDisplayProps {
 
 #### 3. `ControlButtons`
 
-Botones "Aceptar" y "Agregar nuevo" con lógica de habilitación/deshabilitación.
+"Aceptar" and "Agregar nuevo" buttons with enable/disable logic.
 
-- "Aceptar": habilitado solo si hay texto transcrito no vacío y esquema confirmado
-- "Agregar nuevo": habilitado siempre excepto durante procesamiento LLM
-- Ambos deshabilitados durante procesamiento del LLM
-- Mensajes de error contextuales si faltan precondiciones
+- "Aceptar": enabled only if there is non-empty transcribed text and a confirmed schema
+- "Agregar nuevo": always enabled except during LLM processing
+- Both disabled during LLM processing
+- Contextual error messages if preconditions are missing
 
 ```typescript
 interface ControlButtonsProps {
@@ -391,64 +391,64 @@ interface TranscriptionSession {
 
 ## Error Handling
 
-### Categorías de errores
+### Error categories
 
-| Capa | Error | Código HTTP | Respuesta |
+| Layer | Error | HTTP code | Response |
 |------|-------|-------------|-----------|
-| Validación audio | Duración < 1s | 422 | `{ detail: "...", error_code: "AUDIO_TOO_SHORT" }` |
-| Validación audio | Duración > 30s | 422 | `{ detail: "...", error_code: "AUDIO_TOO_LONG" }` |
-| Validación audio | MIME type no soportado | 422 | `{ detail: "...", error_code: "UNSUPPORTED_AUDIO_FORMAT" }` |
-| Validación audio | Archivo vacío | 422 | `{ detail: "...", error_code: "EMPTY_AUDIO_FILE" }` |
-| Aceptación | Texto vacío | 422 | `{ detail: "...", error_code: "EMPTY_TRANSCRIPTION" }` |
-| Aceptación | Sin esquema confirmado | 409 | `{ detail: "...", error_code: "NO_CONFIRMED_SCHEMA" }` |
-| Aceptación | Sesión no encontrada | 404 | `{ detail: "...", error_code: "SESSION_NOT_FOUND" }` |
-| Whisper API | Error de red/timeout | 502 | `{ detail: "...", error_code: "WHISPER_UNAVAILABLE" }` |
-| Whisper API | Respuesta vacía | 502 | `{ detail: "...", error_code: "WHISPER_EMPTY_RESPONSE" }` |
-| Whisper API | Audio no reconocible | 422 | `{ detail: "...", error_code: "WHISPER_NO_SPEECH" }` |
-| Frontend | Permiso micrófono denegado | — | Error inline en componente |
-| Frontend | Error hardware micrófono | — | Error inline en componente |
-| DB | Error de conexión | 500 | `{ detail: "...", error_code: "DATABASE_ERROR" }` |
+| Audio validation | Duration < 1s | 422 | `{ detail: "...", error_code: "AUDIO_TOO_SHORT" }` |
+| Audio validation | Duration > 30s | 422 | `{ detail: "...", error_code: "AUDIO_TOO_LONG" }` |
+| Audio validation | Unsupported MIME type | 422 | `{ detail: "...", error_code: "UNSUPPORTED_AUDIO_FORMAT" }` |
+| Audio validation | Empty file | 422 | `{ detail: "...", error_code: "EMPTY_AUDIO_FILE" }` |
+| Acceptance | Empty text | 422 | `{ detail: "...", error_code: "EMPTY_TRANSCRIPTION" }` |
+| Acceptance | No confirmed schema | 409 | `{ detail: "...", error_code: "NO_CONFIRMED_SCHEMA" }` |
+| Acceptance | Session not found | 404 | `{ detail: "...", error_code: "SESSION_NOT_FOUND" }` |
+| Whisper API | Network/timeout error | 502 | `{ detail: "...", error_code: "WHISPER_UNAVAILABLE" }` |
+| Whisper API | Empty response | 502 | `{ detail: "...", error_code: "WHISPER_EMPTY_RESPONSE" }` |
+| Whisper API | Unrecognizable audio | 422 | `{ detail: "...", error_code: "WHISPER_NO_SPEECH" }` |
+| Frontend | Microphone permission denied | — | Inline error in the component |
+| Frontend | Microphone hardware error | — | Inline error in the component |
+| DB | Connection error | 500 | `{ detail: "...", error_code: "DATABASE_ERROR" }` |
 
-### Estrategia de reintentos
+### Retry strategy
 
-- **Whisper API**: Máximo 2 reintentos automáticos con backoff exponencial (1s, 3s) para errores transitorios (timeout, 5xx).
-- **PostgreSQL**: Sin reintentos automáticos; se reporta al usuario inmediatamente.
-- **Validación**: Sin reintentos — los errores de validación requieren corrección del usuario.
-- **Permisos micrófono**: Sin reintentos automáticos — el usuario debe conceder manualmente.
+- **Whisper API**: At most 2 automatic retries with exponential backoff (1s, 3s) for transient errors (timeout, 5xx).
+- **PostgreSQL**: No automatic retries; reported to the user immediately.
+- **Validation**: No retries — validation errors require correction by the user.
+- **Microphone permissions**: No automatic retries — the user must grant them manually.
 
-### Manejo en el Frontend
+### Frontend handling
 
-- Errores 422: Se muestran inline debajo del componente relevante (grabador o cuadro de texto).
-- Errores 5xx (Whisper/DB): Toast de error con opción "Reintentar grabación".
-- Error de permisos: Mensaje persistente con instrucciones para habilitar micrófono en el navegador.
-- Error de hardware: Mensaje de error con sugerencia de verificar dispositivo de audio.
-- Timeout del frontend: 30s para la llamada de transcripción, 60s para la llamada de aceptación/LLM.
-- Durante errores: El grabador se restablece automáticamente a estado idle.
+- 422 errors: Shown inline below the relevant component (recorder or text box).
+- 5xx errors (Whisper/DB): Error toast with a "Retry recording" option.
+- Permission error: Persistent message with instructions to enable the microphone in the browser.
+- Hardware error: Error message suggesting that the user check the audio device.
+- Frontend timeout: 30s for the transcription call, 60s for the acceptance/LLM call.
+- During errors: The recorder automatically resets to the idle state.
 
 ## Testing Strategy
 
 ### Unit Tests (pytest)
 
-Casos específicos y edge cases:
+Specific cases and edge cases:
 
-- Botón "Grabar" se renderiza correctamente en la pantalla principal.
-- Solicitud de permisos de micrófono al presionar "Grabar" por primera vez.
-- Indicador visual de grabación activa durante la captura.
-- Toggle start/stop del grabador al presionar el botón.
-- Auto-stop a exactamente 30 segundos de grabación.
-- Texto transcrito se muestra en cuadro editable tras transcripción exitosa.
-- Spinner de progreso durante transcripción.
-- Error de Whisper API limpia texto y restablece grabador.
-- Botón "Aceptar" deshabilitado sin texto transcrito.
-- Botón "Aceptar" muestra error sin esquema confirmado.
-- Botones deshabilitados durante procesamiento LLM.
-- "Agregar nuevo" limpia texto y restablece grabador.
+- The "Grabar" button renders correctly on the main screen.
+- Microphone permission is requested when "Grabar" is pressed for the first time.
+- Visual indicator of active recording during capture.
+- Start/stop toggle of the recorder when the button is pressed.
+- Auto-stop at exactly 30 seconds of recording.
+- Transcribed text is shown in the editable box after a successful transcription.
+- Progress spinner during transcription.
+- A Whisper API error clears the text and resets the recorder.
+- The "Aceptar" button is disabled without transcribed text.
+- The "Aceptar" button shows an error without a confirmed schema.
+- Buttons are disabled during LLM processing.
+- "Agregar nuevo" clears the text and resets the recorder.
 
 ### Property-Based Tests (Hypothesis)
 
-Se usará la librería **Hypothesis** para Python. Cada test se ejecutará con un mínimo de 100 iteraciones.
+The **Hypothesis** library for Python will be used. Each test will run with a minimum of 100 iterations.
 
-| Property | Descripción | Tag |
+| Property | Description | Tag |
 |----------|-------------|-----|
 | 1 | Audio below minimum duration rejected | `Feature: audio-transcription-controls, Property 1: Audio below minimum duration is always rejected` |
 | 2 | Acceptance requires non-empty text and confirmed schema | `Feature: audio-transcription-controls, Property 2: Acceptance requires non-empty text and confirmed schema` |
@@ -458,19 +458,19 @@ Se usará la librería **Hypothesis** para Python. Cada test se ejecutará con u
 
 ### Integration Tests
 
-- Flujo completo: grabar → transcribir → aceptar → verificar sesión en DB.
-- Flujo reset: grabar → transcribir → agregar nuevo → verificar sesión discarded.
-- Llamada real a Whisper API con audio de prueba (mock en CI).
-- Verificar que el endpoint `/api/templates/active` retorna esquema confirmado antes de aceptar.
-- Verificar foreign key constraint con `template_sessions`.
-- Timeout handling con Whisper API (mock de red lenta).
+- Full flow: record → transcribe → accept → verify session in the DB.
+- Reset flow: record → transcribe → add new → verify session discarded.
+- Real call to the Whisper API with test audio (mocked in CI).
+- Verify that the `/api/templates/active` endpoint returns a confirmed schema before accepting.
+- Verify the foreign key constraint with `template_sessions`.
+- Timeout handling with the Whisper API (slow-network mock).
 
 ### Frontend Tests (Vitest + React Testing Library)
 
-- Renderizado de componentes (AudioRecorder, TranscriptionDisplay, ControlButtons).
-- Interacciones: click en Grabar, stop, Aceptar, Agregar nuevo.
-- Estados de error y loading.
-- Permisos de micrófono (mock de navigator.mediaDevices).
-- Timer de grabación y auto-stop a 30s.
-- Edición de texto transcrito.
+- Component rendering (AudioRecorder, TranscriptionDisplay, ControlButtons).
+- Interactions: clicking Grabar, stop, Aceptar, Agregar nuevo.
+- Error and loading states.
+- Microphone permissions (mock of navigator.mediaDevices).
+- Recording timer and auto-stop at 30s.
+- Editing the transcribed text.
 

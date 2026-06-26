@@ -7,27 +7,27 @@ import { templateApi } from './services/templateApi';
 import type { UploadResponse } from './types/template';
 
 /**
- * Pasos del flujo de la aplicación. Cada uno corresponde a una pantalla:
+ * Steps in the application flow. Each one maps to a screen:
  *
- *   loading      → comprobando si ya hay una sesión confirmada en el backend
- *   upload       → [Módulo 1] cargar el .xlsx
- *   schema       → [Módulo 1] revisar el esquema detectado
- *   context      → [Módulo 1] describir el contexto (se enriquece con LLM)
- *   transcription→ [Módulos 2+3] grabar audio, transcribir y extraer a Excel
+ *   loading      → checking whether a confirmed session already exists in the backend
+ *   upload       → [Module 1] upload the .xlsx file
+ *   schema       → [Module 1] review the detected schema
+ *   context      → [Module 1] describe the context (enriched with an LLM)
+ *   transcription→ [Modules 2+3] record audio, transcribe, and extract to Excel
  */
 type Step = 'loading' | 'upload' | 'schema' | 'context' | 'transcription';
 
 export function App() {
   const [step, setStep] = useState<Step>('loading');
-  // Guardamos la respuesta de la carga para pasar schema/sessionId a los
-  // siguientes pasos del Módulo 1.
+  // We keep the upload response so we can pass schema/sessionId to the
+  // following steps of Module 1.
   const [upload, setUpload] = useState<UploadResponse | null>(null);
 
-  // --- Al montar: ¿ya existe una sesión confirmada? ---
-  // Así, si el usuario recarga la página tras haber confirmado un Excel,
-  // saltamos directo a la pantalla de transcripción en vez de pedirle
-  // que vuelva a subir el archivo. Esta es la "interacción" clave entre
-  // módulos: el estado vive en el backend, no en el navegador.
+  // --- On mount: does a confirmed session already exist? ---
+  // This way, if the user reloads the page after having confirmed an Excel
+  // file, we jump straight to the transcription screen instead of asking
+  // them to upload the file again. This is the key "interaction" between
+  // modules: the state lives in the backend, not in the browser.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -35,7 +35,7 @@ export function App() {
         await templateApi.getActiveSession();
         if (!cancelled) setStep('transcription');
       } catch {
-        // 404 = no hay sesión activa → empezamos desde la carga
+        // 404 = no active session → start from the upload step
         if (!cancelled) setStep('upload');
       }
     })();
@@ -44,32 +44,32 @@ export function App() {
     };
   }, []);
 
-  // Módulo 1, paso 1 → 2: la carga tuvo éxito, mostramos el esquema.
+  // Module 1, step 1 → 2: the upload succeeded, so we show the schema.
   const handleUploadSuccess = useCallback((response: UploadResponse) => {
     setUpload(response);
     setStep('schema');
   }, []);
 
-  // Módulo 1, paso 2 → 3: el usuario aceptó el esquema, pedimos contexto.
+  // Module 1, step 2 → 3: the user accepted the schema, so we ask for context.
   const handleSchemaConfirm = useCallback(() => {
     setStep('context');
   }, []);
 
-  // Módulo 1, paso 2 → 1: el usuario quiere otro archivo. Descartamos la
-  // sesión en el backend (best-effort) y volvemos a la carga.
+  // Module 1, step 2 → 1: the user wants a different file. We discard the
+  // session in the backend (best-effort) and return to the upload step.
   const handleChangeFile = useCallback(() => {
     if (upload) {
       templateApi.deleteSession(upload.sessionId).catch(() => {
-        /* best-effort: si falla, igual reiniciamos la UI */
+        /* best-effort: if it fails, we reset the UI anyway */
       });
     }
     setUpload(null);
     setStep('upload');
   }, [upload]);
 
-  // Módulo 1, paso 3 → fin: el contexto se confirmó y enriqueció en el
-  // backend. La sesión queda "confirmed"; pasamos a transcripción, que
-  // recuperará la sesión activa por su cuenta.
+  // Module 1, step 3 → end: the context was confirmed and enriched in the
+  // backend. The session is now "confirmed"; we move on to transcription,
+  // which will retrieve the active session on its own.
   const handleContextConfirmed = useCallback(() => {
     setStep('transcription');
   }, []);
@@ -84,7 +84,7 @@ export function App() {
 
   return (
     <main style={pageStyle}>
-      <h1 style={{ marginBottom: '0.25rem' }}>Audio → Excel</h1>
+      <h1 style={{ marginBottom: '0.25rem' }}>Voxa</h1>
       <p style={{ marginTop: 0, color: '#666' }}>
         Captura de datos por voz con extracción mediante IA
       </p>

@@ -41,14 +41,14 @@ class ExtractionOrchestrator:
     ) -> ExtractionResult:
         """Execute the full extraction flow.
 
-        1. Obtener sesión activa (schema, enriched_context, file_path)
-        2. Construir prompt
-        3. Llamar a Claude
-        4. Parsear respuesta
-        5. Insertar fila en DataFrame
-        6. Escribir .xlsx en disco
-        7. Persistir en DB
-        8. Retornar resultado
+        1. Get the active session (schema, enriched_context, file_path)
+        2. Build the prompt
+        3. Call Claude
+        4. Parse the response
+        5. Insert the row into the DataFrame
+        6. Write the .xlsx to disk
+        7. Persist to the DB
+        8. Return the result
 
         Args:
             session_id: UUID of the active template session.

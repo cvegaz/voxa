@@ -30,6 +30,9 @@ class WhisperTranscriptionService:
     """Transcribes audio using OpenAI Whisper API (whisper-1 model)."""
 
     MODEL = "whisper-1"
+    # Force Spanish so Whisper doesn't waste short clips auto-detecting (and
+    # sometimes guessing wrong), which produced poor/partial transcriptions.
+    LANGUAGE = "es"
     MAX_RETRIES = 2
     BACKOFF_DELAYS = [1, 3]  # seconds for retry 1 and retry 2
 
@@ -101,6 +104,8 @@ class WhisperTranscriptionService:
                 transcription = await self._client.audio.transcriptions.create(
                     model=self.MODEL,
                     file=(filename, file_obj, mime_type),
+                    language=self.LANGUAGE,
+                    temperature=0,
                 )
 
                 text = transcription.text.strip() if transcription.text else ""

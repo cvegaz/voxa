@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implementar el módulo de grabación de audio, transcripción vía OpenAI Whisper API, y controles de pantalla principal (Aceptar / Agregar nuevo). El backend usa FastAPI con PostgreSQL, y el frontend usa React con TypeScript. Se sigue un enfoque incremental: primero modelos de datos y servicios backend, luego endpoints API, luego componentes frontend, y finalmente integración completa.
+Implement the audio recording module, transcription via the OpenAI Whisper API, and the main-screen controls (Accept / Add new). The backend uses FastAPI with PostgreSQL, and the frontend uses React with TypeScript. It follows an incremental approach: first data models and backend services, then API endpoints, then frontend components, and finally full integration.
 
 ## Tasks
 

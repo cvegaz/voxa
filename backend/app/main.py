@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Data App API",
+    title="Voxa API",
     description="Backend API for audio-to-Excel data extraction",
     version="0.1.0",
     lifespan=lifespan,

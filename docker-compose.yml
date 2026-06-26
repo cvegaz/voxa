@@ -1,0 +1,78 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# docker-compose.yml — the "orchestra conductor".
+#
+# Defines the 3 services (db, backend, frontend), builds them, connects them on
+# a private network, and manages their lifecycle. Everything comes up with one
+# command:
+#
+#     docker compose up --build
+#
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Project name. Without this, Compose would use the folder name (my_data_app) as
+# the prefix for containers, network, and volumes. We pin it to "voxa" so
+# everything shows up as voxa-backend-1, voxa-db-1, etc.
+name: voxa
+
+services:
+  # ───────────────────────────── Database ─────────────────────────────
+  db:
+    image: postgres:16-alpine          # official image, nothing to build
+    environment:
+      # Postgres automatically creates this user and database on its FIRST
+      # startup (when the volume is empty).
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres       # local-development-only credential
+      POSTGRES_DB: db_audio_excel
+    ports:
+      # HOST:CONTAINER. We use 5433 on the host because your LOCAL Postgres
+      # already occupies 5432. The container's database still listens on 5432
+      # internally, so the backend (which connects to db:5432) is unaffected. To
+      # inspect this database with a client from your PC, connect to localhost:5433.
+      - "5433:5432"
+    volumes:
+      # Named volume: Postgres data lives here and SURVIVES `docker compose down`.
+      # Without this, you would lose the database when the containers stop.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Checks that Postgres is accepting connections. The backend waits for this
+      # to turn "healthy" before starting (see depends_on below).
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db_audio_excel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ──────────────────────────────── Backend ────────────────────────────────
+  backend:
+    build: ./backend                    # builds using backend/Dockerfile
+    env_file:
+      - ./backend/.env                  # loads OPENAI_API_KEY (your existing file)
+    environment:
+      # IMPORTANT: overrides DATABASE_URL from .env. Inside Docker the database is
+      # NOT on "localhost" but on the "db" host (the service name).
+      # `environment` takes precedence over `env_file`.
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/db_audio_excel
+    ports:
+      - "8000:8000"                     # direct access to the API and to /docs (Swagger)
+    volumes:
+      - excel_data:/data                # persists the generated .xlsx files
+    depends_on:
+      db:
+        condition: service_healthy      # does not start until the database is ready
+    # Before serving, apply pending migrations; then start uvicorn. We put it here
+    # (and not in a .sh script) to avoid Windows CRLF line-ending issues that would
+    # break a shebang inside the Linux container.
+    command: sh -c "python scripts/migrate.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  # ──────────────────────────────── Frontend ───────────────────────────────
+  frontend:
+    build: ./frontend                   # builds using frontend/Dockerfile (multi-stage)
+    ports:
+      - "8080:80"                       # opens the app at http://localhost:8080
+    depends_on:
+      - backend                         # starts after the backend
+
+# Named volumes, managed by Docker. They persist data across restarts.
+volumes:
+  pgdata:
+  excel_data:

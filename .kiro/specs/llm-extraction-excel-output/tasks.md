@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement the extraction pipeline that receives transcribed text, sends it to Claude API with the column schema context, parses the structured JSON response, inserts the extracted record into the Excel file, persists it in PostgreSQL, and updates the frontend Vista_Excel component. The implementation uses FastAPI (backend), React/TypeScript (frontend), openpyxl for Excel I/O, pandas for DataFrame processing, and the Anthropic SDK for Claude API calls.
+Implement the extraction pipeline that receives transcribed text, sends it to the OpenAI API with the column schema context, parses the structured JSON response, inserts the extracted record into the Excel file, persists it in PostgreSQL, and updates the frontend Vista_Excel component. The implementation uses FastAPI (backend), React/TypeScript (frontend), openpyxl for Excel I/O, pandas for DataFrame processing, and the `openai` SDK for OpenAI API calls.
 
 ## Tasks
 
@@ -35,7 +35,7 @@ Implement the extraction pipeline that receives transcribed text, sends it to Cl
 
   - [x] 2.3 Implement `ResponseParser` service
     - Create `ResponseParser` class with `parse()` method
-    - Parse raw JSON string response from Claude
+    - Parse raw JSON string response from the model
     - Validate keys against ColumnSchema — assign empty string for missing/null values
     - Ignore extra keys not present in schema
     - Raise appropriate errors for invalid JSON
@@ -47,11 +47,11 @@ Implement the extraction pipeline that receives transcribed text, sends it to Cl
     - Assert output dict has exactly one entry per schema column, no extra keys, and missing/null values are empty strings
     - **Validates: Requirements 1.3, 1.4**
 
-  - [x] 2.5 Implement `LLMExtractionService` with Claude API integration
+  - [x] 2.5 Implement `LLMExtractionService` with OpenAI API integration
     - Create `LLMExtractionService` class with `extract()` async method
-    - Use the `anthropic` Python SDK to call Claude API
+    - Use the `openai` Python SDK to call the OpenAI API
     - Implement retry logic: max 2 retries with exponential backoff (1s, 3s) for transient errors (timeout, 5xx)
-    - Parse Claude's text response as JSON
+    - Parse the model's text response as JSON
     - _Requirements: 1.1, 1.2, 1.6_
 
   - [x] 2.6 Implement `ExcelWriter` service
@@ -146,9 +146,9 @@ Implement the extraction pipeline that receives transcribed text, sends it to Cl
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties from the design document
 - Unit tests validate specific examples and edge cases
-- The backend uses FastAPI (Python), openpyxl, pandas, and the anthropic SDK
+- The backend uses FastAPI (Python), openpyxl, pandas, and the `openai` SDK
 - The frontend uses React with TypeScript
-- Retry logic for Claude API follows the same pattern as `excel-template-loader` (max 2 retries, 1s/3s backoff)
+- Retry logic for the OpenAI API follows the same pattern as `excel-template-loader` (max 2 retries, 1s/3s backoff)
 
 ## Task Dependency Graph
 

@@ -19,7 +19,7 @@ class RecordValue(CamelModel):
     """A single extracted value for a column."""
 
     column_name: str
-    value: str  # string vacío si no se identificó
+    value: str  # empty string if it could not be identified
 
 
 class ExtractionResult(CamelModel):

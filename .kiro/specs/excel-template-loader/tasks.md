@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implement the Excel template loading module that allows users to upload `.xlsx` files, validates their structure (extension, max 8 columns, rows 1-3 complete), extracts the column schema, converts the content to a pandas DataFrame, presents the schema for confirmation, collects a user-provided context description, and sends it to Claude API for enrichment. The backend uses FastAPI with openpyxl and pandas; the frontend uses React with TypeScript.
+Implement the Excel template loading module that allows users to upload `.xlsx` files, validates their structure (extension, max 8 columns, rows 1-3 complete), extracts the column schema, converts the content to a pandas DataFrame, presents the schema for confirmation, collects a user-provided context description, and sends it to the OpenAI API for enrichment. The backend uses FastAPI with openpyxl and pandas; the frontend uses React with TypeScript.
 
 ## Tasks
 
@@ -84,7 +84,7 @@ Implement the Excel template loading module that allows users to upload `.xlsx` 
   - [x] 3.3 Implement `LLMEnrichmentService`
     - Create `LLMEnrichmentService` class with `enrich()` async method
     - Build prompt with user context + column schema (names, types, examples)
-    - Call Claude API using the `anthropic` Python SDK
+    - Call the OpenAI API using the `openai` Python SDK
     - Implement retry logic: max 2 retries with exponential backoff (1s, 3s) for transient errors
     - Return enriched context string
     - Handle errors: `LLM_UNAVAILABLE` for network/timeout, `LLM_INVALID_RESPONSE` for empty/invalid response
@@ -167,7 +167,7 @@ Implement the Excel template loading module that allows users to upload `.xlsx` 
     - Real-time validation: show error if < 50 or > 3000 characters
     - Disable "Confirmar y Continuar" button until context is valid
     - On confirm: call `confirmTemplate()` API
-    - Show progress indicator during Claude enrichment call
+    - Show progress indicator during the enrichment call
     - Show error with retry option on failure (5xx)
     - On success: store enriched context and enable recording controls
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.8, 3.9_
@@ -192,10 +192,10 @@ Implement the Excel template loading module that allows users to upload `.xlsx` 
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties from the design document
 - Unit tests validate specific examples and edge cases
-- The backend uses FastAPI (Python), openpyxl, pandas, and the anthropic SDK
+- The backend uses FastAPI (Python), openpyxl, pandas, and the `openai` SDK
 - The frontend uses React with TypeScript
 - Property-based tests use Hypothesis (Python backend) and fast-check (TypeScript frontend)
-- Retry logic for Claude API: max 2 retries with exponential backoff (1s, 3s)
+- Retry logic for the OpenAI API: max 2 retries with exponential backoff (1s, 3s)
 
 ## Task Dependency Graph
 

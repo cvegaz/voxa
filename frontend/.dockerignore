@@ -1,0 +1,16 @@
+# What is NOT copied into the frontend image.
+# node_modules is the most important one: it is reinstalled clean inside the image
+# (native dependencies are OS-specific; the host's may not work on Linux).
+node_modules/
+dist/
+
+# Secrets and local environments
+.env
+.env.*
+
+# Caches and artifacts
+*.tsbuildinfo
+npm-debug.log*
+
+# Tests and docs are not needed to serve the app
+*.md

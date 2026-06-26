@@ -1,17 +1,17 @@
 # Backend application package
 #
-# Carga las variables de entorno desde backend/.env (si existe) ANTES de que
-# cualquier submódulo lea os.environ (database.py lee DATABASE_URL al importarse,
-# y los servicios leen las API keys al instanciarse).
+# Loads environment variables from backend/.env (if present) BEFORE any
+# submodule reads os.environ (database.py reads DATABASE_URL on import, and
+# the services read the API keys when they are instantiated).
 #
-# En producción el archivo .env normalmente no existe: load_dotenv() no hace
-# nada y el backend usa las variables de entorno reales que inyecte la
-# plataforma. El mismo código sirve para local y para producción.
+# In production the .env file usually does not exist: load_dotenv() does
+# nothing and the backend uses the real environment variables injected by the
+# platform. The same code works for both local and production.
 
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# backend/.env  →  parent de app/ es la carpeta backend/
+# backend/.env  →  the parent of app/ is the backend/ folder
 _ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(dotenv_path=_ENV_PATH)

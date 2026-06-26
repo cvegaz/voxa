@@ -11,10 +11,10 @@ class ResponseParser:
 
     def parse(self, raw_response: str, schema: ColumnSchema) -> dict[str, str]:
         """
-        Parsea la respuesta de Claude como JSON.
-        Valida que las claves correspondan a las columnas del esquema.
-        Asigna string vacío a campos faltantes o nulos.
-        Retorna dict {column_name: value}.
+        Parse the response from Claude as JSON.
+        Validate that the keys correspond to the columns in the schema.
+        Assign an empty string to missing or null fields.
+        Return a dict {column_name: value}.
 
         Args:
             raw_response: Raw JSON string response from Claude.

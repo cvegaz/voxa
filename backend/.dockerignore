@@ -1,0 +1,21 @@
+# Like .gitignore, but for Docker: these files are NOT copied into the image.
+# Two goals: (1) lighter images and faster builds,
+#            (2) NEVER let secrets or local junk into the image.
+
+# Local virtual environment (the image installs its own dependencies)
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# SECRETS: must never be baked into the image.
+# They are injected at runtime via environment variables (see compose).
+.env
+.env.*
+
+# Tests and artifacts not needed to run in production
+tests/
+*.md

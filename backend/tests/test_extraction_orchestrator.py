@@ -1,13 +1,11 @@
 """Unit tests for ExtractionOrchestrator service."""
 
-import io
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pandas as pd
 import pytest
 
+from app.constants import MAX_ROWS_PER_SESSION
 from app.models import ColumnSchema, ExtractionResult, RecordValue
 from app.services.extraction_orchestrator import ExtractionOrchestrator
 from app.services.exceptions import LLMInvalidResponseError, LLMUnavailableError
@@ -27,14 +25,11 @@ def schema_json():
 
 @pytest.fixture
 def session_data(schema_json):
-    """Sample session data returned by repository."""
-    empty_df = pd.DataFrame(columns=["Nombre", "Edad", "Ciudad"])
+    """Sample session data returned by the repository."""
     return {
         "id": str(uuid4()),
         "schema_json": schema_json,
         "enriched_context": "Contexto de prueba para extracción.",
-        "file_path": "/tmp/test_file.xlsx",
-        "dataframe_json": empty_df.to_json(),
         "status": "confirmed",
     }
 
@@ -55,23 +50,21 @@ def orchestrator():
         "Ciudad": "Lima",
     }
 
-    excel_writer = MagicMock()
-    excel_writer.write.return_value = None
-
     repository = AsyncMock()
+    # No records yet by default → first record lands on the first data row.
+    repository.count_records.return_value = 0
 
     return ExtractionOrchestrator(
         prompt_builder=prompt_builder,
         llm_service=llm_service,
         response_parser=response_parser,
-        excel_writer=excel_writer,
         repository=repository,
     )
 
 
 @pytest.mark.asyncio
 async def test_process_happy_path(orchestrator, session_data):
-    """Test complete happy path: session found → prompt built → LLM called → parsed → written → persisted."""
+    """Complete happy path: session found → prompt built → LLM called → parsed → persisted."""
     extraction_id = str(uuid4())
     orchestrator._repository.get_session_with_context.return_value = session_data
     orchestrator._repository.save_extraction.return_value = extraction_id
@@ -84,25 +77,27 @@ async def test_process_happy_path(orchestrator, session_data):
     # Verify result type and content
     assert isinstance(result, ExtractionResult)
     assert str(result.extraction_id) == extraction_id
-    assert result.row_number == 4  # First record starts at row 4
+    assert result.row_number == 2  # First record lands on row 2 (row 1 is the header)
     assert len(result.record) == 3
     assert result.record[0] == RecordValue(column_name="Nombre", value="Carlos")
     assert result.record[1] == RecordValue(column_name="Edad", value="25")
     assert result.record[2] == RecordValue(column_name="Ciudad", value="Lima")
 
-    # Verify all dependencies were called
+    # Verify the pipeline dependencies were called
     orchestrator._prompt_builder.build.assert_called_once()
     orchestrator._llm_service.extract.assert_called_once_with("prompt de prueba")
     orchestrator._response_parser.parse.assert_called_once()
-    orchestrator._excel_writer.write.assert_called_once()
-    orchestrator._repository.update_dataframe.assert_called_once()
+    orchestrator._repository.count_records.assert_called_once()
     orchestrator._repository.save_extraction.assert_called_once()
+    # First record is far below the cap → session stays open.
+    orchestrator._repository.mark_finalized.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_row_number_first_record_is_4(orchestrator, session_data):
-    """First record inserted should have row_number = 4."""
+async def test_row_number_first_record_is_2(orchestrator, session_data):
+    """First record (no existing rows) should get row_number = 2."""
     orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.count_records.return_value = 0
     orchestrator._repository.save_extraction.return_value = str(uuid4())
 
     result = await orchestrator.process(
@@ -110,28 +105,30 @@ async def test_row_number_first_record_is_4(orchestrator, session_data):
         transcribed_text="Texto de prueba",
     )
 
+    assert result.row_number == 2
+
+
+@pytest.mark.asyncio
+async def test_row_number_increments_with_existing_records(orchestrator, session_data):
+    """Row number should be 2 + number of existing records."""
+    orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.count_records.return_value = 2
+    orchestrator._repository.save_extraction.return_value = str(uuid4())
+
+    result = await orchestrator.process(
+        session_id=session_data["id"],
+        transcribed_text="Texto de prueba",
+    )
+
+    # 2 header offset + 2 existing records = row 4 (third record)
     assert result.row_number == 4
 
 
 @pytest.mark.asyncio
-async def test_row_number_increments_for_existing_rows(orchestrator, schema_json):
-    """Row number should be 4 + number of existing rows in DataFrame."""
-    # Create a DataFrame with 2 existing rows
-    existing_df = pd.DataFrame([
-        {"Nombre": "Ana", "Edad": "28", "Ciudad": "Bogotá"},
-        {"Nombre": "Luis", "Edad": "35", "Ciudad": "Quito"},
-    ])
-
-    session_data = {
-        "id": str(uuid4()),
-        "schema_json": schema_json,
-        "enriched_context": "Contexto",
-        "file_path": "/tmp/test.xlsx",
-        "dataframe_json": existing_df.to_json(),
-        "status": "confirmed",
-    }
-
+async def test_row_number_with_one_existing_record(orchestrator, session_data):
+    """Row number should be 3 when there is 1 existing record."""
     orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.count_records.return_value = 1
     orchestrator._repository.save_extraction.return_value = str(uuid4())
 
     result = await orchestrator.process(
@@ -139,27 +136,45 @@ async def test_row_number_increments_for_existing_rows(orchestrator, schema_json
         transcribed_text="Texto de prueba",
     )
 
-    # 4 + 2 existing rows = 6
-    assert result.row_number == 6
+    assert result.row_number == 3
 
 
 @pytest.mark.asyncio
-async def test_row_number_with_one_existing_row(orchestrator, schema_json):
-    """Row number should be 5 when there's 1 existing row."""
-    existing_df = pd.DataFrame([
-        {"Nombre": "Ana", "Edad": "28", "Ciudad": "Bogotá"},
-    ])
-
-    session_data = {
-        "id": str(uuid4()),
-        "schema_json": schema_json,
-        "enriched_context": "Contexto",
-        "file_path": "/tmp/test.xlsx",
-        "dataframe_json": existing_df.to_json(),
-        "status": "confirmed",
-    }
-
+async def test_row_number_derived_from_count_for_same_session(orchestrator, session_data):
+    """count_records is queried for the session being processed."""
     orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.save_extraction.return_value = str(uuid4())
+
+    await orchestrator.process(
+        session_id=session_data["id"],
+        transcribed_text="Texto de prueba",
+    )
+
+    count_call = orchestrator._repository.count_records.call_args
+    assert count_call[0][0] == session_data["id"]
+
+
+@pytest.mark.asyncio
+async def test_does_not_finalize_below_cap(orchestrator, session_data):
+    """A record below the cap must not finalize the session."""
+    orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.count_records.return_value = MAX_ROWS_PER_SESSION - 2
+    orchestrator._repository.save_extraction.return_value = str(uuid4())
+
+    await orchestrator.process(
+        session_id=session_data["id"],
+        transcribed_text="Texto de prueba",
+    )
+
+    orchestrator._repository.mark_finalized.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_auto_finalizes_when_cap_reached(orchestrator, session_data):
+    """The record that reaches the cap must finalize the session."""
+    orchestrator._repository.get_session_with_context.return_value = session_data
+    # One short of the cap → this extraction is the last allowed one.
+    orchestrator._repository.count_records.return_value = MAX_ROWS_PER_SESSION - 1
     orchestrator._repository.save_extraction.return_value = str(uuid4())
 
     result = await orchestrator.process(
@@ -167,12 +182,14 @@ async def test_row_number_with_one_existing_row(orchestrator, schema_json):
         transcribed_text="Texto de prueba",
     )
 
-    assert result.row_number == 5
+    orchestrator._repository.mark_finalized.assert_called_once_with(session_data["id"])
+    # Cap record lands on row FIRST_DATA_ROW + (MAX - 1).
+    assert result.row_number == 2 + (MAX_ROWS_PER_SESSION - 1)
 
 
 @pytest.mark.asyncio
 async def test_session_not_found_raises_value_error(orchestrator):
-    """Should raise ValueError when session is not found."""
+    """Should raise ValueError when the session is not found."""
     orchestrator._repository.get_session_with_context.return_value = None
 
     with pytest.raises(ValueError, match="Session .* not found"):
@@ -184,7 +201,7 @@ async def test_session_not_found_raises_value_error(orchestrator):
 
 @pytest.mark.asyncio
 async def test_llm_unavailable_propagates(orchestrator, session_data):
-    """LLMUnavailableError from LLM service should propagate."""
+    """LLMUnavailableError from the LLM service should propagate."""
     orchestrator._repository.get_session_with_context.return_value = session_data
     orchestrator._llm_service.extract.side_effect = LLMUnavailableError(
         "El servicio LLM no está disponible"
@@ -196,10 +213,13 @@ async def test_llm_unavailable_propagates(orchestrator, session_data):
             transcribed_text="Texto de prueba",
         )
 
+    # No record should be saved when extraction fails.
+    orchestrator._repository.save_extraction.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_llm_invalid_response_propagates(orchestrator, session_data):
-    """LLMInvalidResponseError from response parser should propagate."""
+    """LLMInvalidResponseError from the response parser should propagate."""
     orchestrator._repository.get_session_with_context.return_value = session_data
     orchestrator._response_parser.parse.side_effect = LLMInvalidResponseError(
         detail="La respuesta del LLM no es JSON válido"
@@ -211,68 +231,7 @@ async def test_llm_invalid_response_propagates(orchestrator, session_data):
             transcribed_text="Texto de prueba",
         )
 
-
-@pytest.mark.asyncio
-async def test_file_not_found_propagates(orchestrator, session_data):
-    """FileNotFoundError from ExcelWriter should propagate."""
-    orchestrator._repository.get_session_with_context.return_value = session_data
-    orchestrator._repository.save_extraction.return_value = str(uuid4())
-    orchestrator._excel_writer.write.side_effect = FileNotFoundError(
-        "El archivo Excel no fue encontrado"
-    )
-
-    with pytest.raises(FileNotFoundError):
-        await orchestrator.process(
-            session_id=session_data["id"],
-            transcribed_text="Texto de prueba",
-        )
-
-
-@pytest.mark.asyncio
-async def test_dataframe_updated_before_excel_write(orchestrator, session_data):
-    """Verify update_dataframe is called with the updated DataFrame JSON."""
-    orchestrator._repository.get_session_with_context.return_value = session_data
-    orchestrator._repository.save_extraction.return_value = str(uuid4())
-
-    await orchestrator.process(
-        session_id=session_data["id"],
-        transcribed_text="Texto de prueba",
-    )
-
-    # Verify update_dataframe was called
-    call_args = orchestrator._repository.update_dataframe.call_args
-    updated_json = call_args[1]["dataframe_json"] if call_args[1] else call_args[0][1]
-
-    # The updated DataFrame should have 1 row (the inserted record)
-    updated_df = pd.read_json(io.StringIO(updated_json))
-    assert len(updated_df) == 1
-    assert updated_df.iloc[0]["Nombre"] == "Carlos"
-    assert str(updated_df.iloc[0]["Edad"]) == "25"
-    assert updated_df.iloc[0]["Ciudad"] == "Lima"
-
-
-@pytest.mark.asyncio
-async def test_empty_dataframe_json_creates_new_df(orchestrator, schema_json):
-    """When dataframe_json is empty/None, a new empty DataFrame should be created."""
-    session_data = {
-        "id": str(uuid4()),
-        "schema_json": schema_json,
-        "enriched_context": "Contexto",
-        "file_path": "/tmp/test.xlsx",
-        "dataframe_json": None,
-        "status": "confirmed",
-    }
-
-    orchestrator._repository.get_session_with_context.return_value = session_data
-    orchestrator._repository.save_extraction.return_value = str(uuid4())
-
-    result = await orchestrator.process(
-        session_id=session_data["id"],
-        transcribed_text="Texto de prueba",
-    )
-
-    # First record on empty DF → row 4
-    assert result.row_number == 4
+    orchestrator._repository.save_extraction.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -307,5 +266,5 @@ async def test_save_extraction_receives_correct_args(orchestrator, session_data)
     call_kwargs = orchestrator._repository.save_extraction.call_args[1]
     assert call_kwargs["session_id"] == session_data["id"]
     assert call_kwargs["record"] == {"Nombre": "Carlos", "Edad": "25", "Ciudad": "Lima"}
-    assert call_kwargs["row_number"] == 4
+    assert call_kwargs["row_number"] == 2
     assert call_kwargs["transcribed_text"] == "Texto original"

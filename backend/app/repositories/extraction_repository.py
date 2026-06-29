@@ -55,6 +55,72 @@ class ExtractionRepository:
             )
             return str(row["id"])
 
+    async def get_export_context(self, session_id: str) -> Optional[dict]:
+        """Fetch what the export needs: the column schema and the file name.
+
+        Used by the on-demand Excel export (ADR-0013), which rebuilds the .xlsx
+        from the schema. Returns None if the session does not exist.
+        """
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT schema_json, file_name FROM template_sessions WHERE id = $1",
+                UUID(session_id),
+            )
+            if row is None:
+                return None
+
+            schema_json = row["schema_json"]
+            if isinstance(schema_json, str):
+                schema_json = json.loads(schema_json)
+
+            return {"schema_json": schema_json, "file_name": row["file_name"]}
+
+    async def get_status(self, session_id: str) -> Optional[str]:
+        """Return the session status, or None if the session does not exist."""
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status FROM template_sessions WHERE id = $1",
+                UUID(session_id),
+            )
+            return row["status"] if row else None
+
+    async def mark_finalized(self, session_id: str) -> None:
+        """Mark a session as finalized (idempotent at the call site).
+
+        A finalized session accepts no further extractions (ADR-0013).
+
+        Raises:
+            ValueError: If the session is not found.
+        """
+        async with self._pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE template_sessions SET status = 'finalized' WHERE id = $1",
+                UUID(session_id),
+            )
+            if result == "UPDATE 0":
+                raise ValueError(f"Session {session_id} not found")
+
+    async def count_records(self, session_id: str) -> int:
+        """Count the extraction records already saved for a session.
+
+        This is the authoritative count used to derive the next ``row_number``
+        (see ADR-0013): ``extraction_records`` is the single source of truth, so
+        the row number is consistent with what the UI shows and can never drift
+        from a parallel counter.
+
+        Args:
+            session_id: The UUID of the template session.
+
+        Returns:
+            The number of extraction records for the session.
+        """
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS n FROM extraction_records WHERE session_id = $1",
+                UUID(session_id),
+            )
+            return row["n"]
+
     async def get_records(self, session_id: str) -> list[dict]:
         """Retrieve all extraction records for a session, ordered by row_number ASC.
 
@@ -96,33 +162,6 @@ class ExtractionRepository:
                 )
 
             return records
-
-    async def update_dataframe(
-        self,
-        session_id: str,
-        dataframe_json: str,
-    ) -> None:
-        """Update the DataFrame JSON in the template session.
-
-        Args:
-            session_id: The UUID of the template session.
-            dataframe_json: The updated DataFrame as a JSON string.
-
-        Raises:
-            ValueError: If the session is not found.
-        """
-        async with self._pool.acquire() as conn:
-            result = await conn.execute(
-                """
-                UPDATE template_sessions
-                SET dataframe_json = $1::jsonb
-                WHERE id = $2
-                """,
-                dataframe_json,
-                UUID(session_id),
-            )
-            if result == "UPDATE 0":
-                raise ValueError(f"Session {session_id} not found")
 
     async def get_session_with_context(self, session_id: str) -> Optional[dict]:
         """Fetch a session with schema, enriched_context, and file_path.

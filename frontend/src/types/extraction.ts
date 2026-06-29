@@ -40,6 +40,18 @@ export interface ExtractionRecord {
 export interface RecordsResponse {
   records: ExtractionRecord[];
   totalRows: number;
+  /** Maximum records allowed before the session auto-finalizes. */
+  maxRows: number;
+  /** Whether the session is closed (manually finalized or cap reached). */
+  finalized: boolean;
+}
+
+/**
+ * Response returned by POST /api/extraction/finalize/{session_id}.
+ */
+export interface FinalizeResponse {
+  status: string;
+  totalRows: number;
 }
 
 /**
@@ -57,6 +69,7 @@ export type ExtractionErrorCode =
   | 'EMPTY_TRANSCRIPTION'
   | 'SESSION_NOT_FOUND'
   | 'SESSION_NOT_CONFIRMED'
+  | 'SESSION_FINALIZED'
   | 'LLM_UNAVAILABLE'
   | 'LLM_INVALID_RESPONSE'
   | 'LLM_EMPTY_RESPONSE'
@@ -96,6 +109,8 @@ function mapExtractionErrorToUserMessage(
       return 'La sesión no fue encontrada. Puede que haya expirado.';
     case 'SESSION_NOT_CONFIRMED':
       return 'La sesión no ha sido confirmada. Confirme el esquema antes de extraer datos.';
+    case 'SESSION_FINALIZED':
+      return 'La sesión ya fue finalizada. Descargue el Excel o cargue una nueva plantilla.';
     case 'LLM_UNAVAILABLE':
       return 'El servicio de extracción no está disponible en este momento. Intente de nuevo.';
     case 'LLM_INVALID_RESPONSE':
@@ -107,7 +122,9 @@ function mapExtractionErrorToUserMessage(
     case 'FILE_NOT_FOUND':
       return 'El archivo Excel no fue encontrado. Cargue un nuevo archivo.';
     case 'DATABASE_ERROR':
-      return 'Error interno del servidor. Intente de nuevo más tarde.';
+      // Surface the backend detail when present: a discarded detail is exactly
+      // what masked the original file_path crash (ADR-0013).
+      return detail || 'Error interno del servidor. Intente de nuevo más tarde.';
     default:
       break;
   }
@@ -120,7 +137,7 @@ function mapExtractionErrorToUserMessage(
     return 'El recurso solicitado no fue encontrado.';
   }
   if (statusCode >= 500) {
-    return 'Error del servidor. Intente de nuevo más tarde.';
+    return detail || 'Error del servidor. Intente de nuevo más tarde.';
   }
 
   return detail || 'Ha ocurrido un error inesperado.';

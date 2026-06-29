@@ -9,10 +9,13 @@ An app for capturing data through **audio narration** and saving it to an **Exce
 ```
 Load Excel template → detect schema (columns/types) → confirm
    → record/upload audio → transcribe (Whisper) → accept text
-   → extract fields (LLM) → insert row into the Excel file → view result
+   → extract fields (LLM) → append row (kept in the DB) → view result
+   → finalize (or reach 5 rows) → download the rebuilt .xlsx
 ```
 
 OpenAI does **all** of the AI work: transcription (Whisper `whisper-1`) + context enrichment and field extraction (`gpt-4o-mini`).
+
+The extraction/export flow is **stateless on disk**: each accepted row is persisted in Postgres (`extraction_records`, the single source of truth), the session auto-finalizes at 5 rows or on demand, and the final `.xlsx` is **rebuilt in memory from the schema on download** (header + data only, no `Tipo_Dato`/`Ejemplo_Valor`). See [ADR-0013](docs/adr/0013-in-memory-rows-on-demand-excel-export.md).
 
 ## Stack
 

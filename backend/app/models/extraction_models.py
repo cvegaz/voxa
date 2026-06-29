@@ -27,7 +27,8 @@ class ExtractionResult(CamelModel):
 
     extraction_id: UUID
     record: list[RecordValue]
-    row_number: int = Field(ge=4)
+    # First data record lands on row 2 (row 1 is the single header row — ADR-0013).
+    row_number: int = Field(ge=2)
 
 
 class ExtractionRecord(CamelModel):
@@ -44,6 +45,17 @@ class RecordsResponse(CamelModel):
     """Response for GET /api/extraction/records/{session_id}."""
 
     records: list[ExtractionRecord]
+    total_rows: int
+    # Capture cap and whether the session is closed (ADR-0013). The UI uses these
+    # to show "N / max_rows" and to enable the download / disable capture.
+    max_rows: int
+    finalized: bool
+
+
+class FinalizeResponse(CamelModel):
+    """Response for POST /api/extraction/finalize/{session_id}."""
+
+    status: str  # always "finalized"
     total_rows: int
 
 

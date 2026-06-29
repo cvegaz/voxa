@@ -54,8 +54,8 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/db_audio_excel
     ports:
       - "8000:8000"                     # direct access to the API and to /docs (Swagger)
-    volumes:
-      - excel_data:/data                # persists the generated .xlsx files
+    # No file volume: the backend is stateless. The result .xlsx is rebuilt in
+    # memory from the database on download (ADR-0013), never written to disk.
     depends_on:
       db:
         condition: service_healthy      # does not start until the database is ready
@@ -75,4 +75,3 @@ services:
 # Named volumes, managed by Docker. They persist data across restarts.
 volumes:
   pgdata:
-  excel_data:

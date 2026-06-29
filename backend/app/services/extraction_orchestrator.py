@@ -1,37 +1,36 @@
 """Extraction Orchestrator Service.
 
-Coordinates the full extraction flow: get session → build prompt → call LLM →
-parse response → insert row into DataFrame → write .xlsx → persist in DB → return result.
+Coordinates the extraction flow: get session → build prompt → call LLM →
+parse response → persist the record → return result.
+
+Per ADR-0013, nothing is written to disk and no parallel DataFrame is kept:
+``extraction_records`` is the single source of truth, and the final ``.xlsx`` is
+reconstructed from the schema on demand at export time.
 """
 
-import io
 from uuid import UUID
 
-import pandas as pd
-
+from app.constants import FIRST_DATA_ROW, MAX_ROWS_PER_SESSION
 from app.models import ColumnSchema, ExtractionResult, RecordValue
 from app.repositories import ExtractionRepository
-from app.services.excel_writer import ExcelWriter
 from app.services.llm_extraction_service import LLMExtractionService
 from app.services.prompt_builder import PromptBuilder
 from app.services.response_parser import ResponseParser
 
 
 class ExtractionOrchestrator:
-    """Orchestrates the complete extraction pipeline."""
+    """Orchestrates the extraction pipeline."""
 
     def __init__(
         self,
         prompt_builder: PromptBuilder,
         llm_service: LLMExtractionService,
         response_parser: ResponseParser,
-        excel_writer: ExcelWriter,
         repository: ExtractionRepository,
     ) -> None:
         self._prompt_builder = prompt_builder
         self._llm_service = llm_service
         self._response_parser = response_parser
-        self._excel_writer = excel_writer
         self._repository = repository
 
     async def process(
@@ -41,14 +40,12 @@ class ExtractionOrchestrator:
     ) -> ExtractionResult:
         """Execute the full extraction flow.
 
-        1. Get the active session (schema, enriched_context, file_path)
+        1. Get the active session (schema, enriched_context)
         2. Build the prompt
-        3. Call Claude
+        3. Call the LLM
         4. Parse the response
-        5. Insert the row into the DataFrame
-        6. Write the .xlsx to disk
-        7. Persist to the DB
-        8. Return the result
+        5. Derive row_number from the record count, persist the record
+        6. Return the result
 
         Args:
             session_id: UUID of the active template session.
@@ -59,9 +56,8 @@ class ExtractionOrchestrator:
 
         Raises:
             ValueError: If session is not found.
-            LLMUnavailableError: If Claude API is unreachable.
-            LLMInvalidResponseError: If Claude returns invalid JSON.
-            FileNotFoundError: If the Excel file is missing.
+            LLMUnavailableError: If the LLM API is unreachable.
+            LLMInvalidResponseError: If the LLM returns invalid JSON.
         """
         # 1. Get session with context
         session = await self._repository.get_session_with_context(session_id)
@@ -70,8 +66,6 @@ class ExtractionOrchestrator:
 
         schema = ColumnSchema(**session["schema_json"])
         enriched_context = session["enriched_context"] or ""
-        file_path = session["file_path"]
-        dataframe_json = session["dataframe_json"]
 
         # 2. Build prompt
         prompt = self._prompt_builder.build(
@@ -86,30 +80,14 @@ class ExtractionOrchestrator:
         # 4. Parse response
         record = self._response_parser.parse(raw_response, schema)
 
-        # 5. Insert row into DataFrame
-        if dataframe_json:
-            df = pd.read_json(io.StringIO(dataframe_json))
-        else:
-            column_names = [col.name for col in schema.columns]
-            df = pd.DataFrame(columns=column_names)
+        # 5. Derive row_number from the authoritative record count and persist.
+        #    extraction_records is the single source of truth (ADR-0013), so the
+        #    Nth record lands on row FIRST_DATA_ROW + (N-1): each recording adds
+        #    exactly one row and the next goes to the next number, with no
+        #    parallel counter to drift out of sync.
+        existing_count = await self._repository.count_records(session_id)
+        row_number = FIRST_DATA_ROW + existing_count
 
-        # Compute row_number: 4 + number of existing data rows
-        row_number = 4 + len(df)
-
-        # Append the new record as a row
-        new_row = pd.DataFrame([record])
-        df = pd.concat([df, new_row], ignore_index=True)
-
-        # Serialize DataFrame back to JSON
-        updated_dataframe_json = df.to_json()
-
-        # 6. Update DataFrame in DB
-        await self._repository.update_dataframe(session_id, updated_dataframe_json)
-
-        # 7. Write .xlsx to disk
-        self._excel_writer.write(df, file_path, schema)
-
-        # 8. Persist extraction record in DB
         extraction_id = await self._repository.save_extraction(
             session_id=session_id,
             record=record,
@@ -117,7 +95,13 @@ class ExtractionOrchestrator:
             transcribed_text=transcribed_text,
         )
 
-        # Build result
+        # 5b. Auto-finalize when the row cap is reached (ADR-0013). The session
+        #     then accepts no further extractions; the refetched records carry
+        #     the finalized flag so the UI can enable the download.
+        if existing_count + 1 >= MAX_ROWS_PER_SESSION:
+            await self._repository.mark_finalized(session_id)
+
+        # 6. Build result
         record_values = [
             RecordValue(column_name=col.name, value=record.get(col.name, ""))
             for col in schema.columns

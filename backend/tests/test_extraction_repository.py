@@ -162,42 +162,6 @@ async def test_get_records_returns_empty_list(mock_pool):
 
 
 @pytest.mark.asyncio
-async def test_update_dataframe_success(mock_pool):
-    """Test that update_dataframe updates the session's dataframe_json."""
-    pool, conn = mock_pool
-    conn.execute.return_value = "UPDATE 1"
-
-    repo = ExtractionRepository(pool)
-    session_id = str(uuid4())
-    df_json = '[{"Nombre": "Juan", "Edad": "30"}]'
-
-    await repo.update_dataframe(session_id=session_id, dataframe_json=df_json)
-
-    conn.execute.assert_called_once()
-    call_args = conn.execute.call_args
-    sql = call_args[0][0]
-    assert "UPDATE template_sessions" in sql
-    assert "dataframe_json" in sql
-    assert call_args[0][1] == df_json
-    assert call_args[0][2] == UUID(session_id)
-
-
-@pytest.mark.asyncio
-async def test_update_dataframe_raises_on_not_found(mock_pool):
-    """Test that update_dataframe raises ValueError if session not found."""
-    pool, conn = mock_pool
-    conn.execute.return_value = "UPDATE 0"
-
-    repo = ExtractionRepository(pool)
-
-    with pytest.raises(ValueError, match="not found"):
-        await repo.update_dataframe(
-            session_id=str(uuid4()),
-            dataframe_json="[]",
-        )
-
-
-@pytest.mark.asyncio
 async def test_get_session_with_context_returns_dict(mock_pool):
     """Test that get_session_with_context returns session data as a dict."""
     pool, conn = mock_pool

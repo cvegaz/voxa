@@ -2,8 +2,8 @@ from .acceptance_validator import AcceptanceValidator
 from .audio_validator import AudioValidator
 from .context_validator import ContextValidator
 from .dataframe_converter import DataFrameConverter
+from .excel_exporter import ExcelExporter
 from .excel_validator import ExcelValidator
-from .excel_writer import ExcelWriter
 from .exceptions import (
     LLMInvalidResponseError,
     LLMUnavailableError,
@@ -24,8 +24,8 @@ __all__ = [
     "AudioValidator",
     "ContextValidator",
     "DataFrameConverter",
+    "ExcelExporter",
     "ExcelValidator",
-    "ExcelWriter",
     "ExtractionOrchestrator",
     "LLMEnrichmentService",
     "LLMExtractionService",

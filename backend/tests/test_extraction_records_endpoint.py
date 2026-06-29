@@ -7,6 +7,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from app.constants import MAX_ROWS_PER_SESSION
 from app.main import app
 
 
@@ -43,6 +44,46 @@ class TestGetExtractionRecordsEmpty:
         data = response.json()
         assert data["records"] == []
         assert data["totalRows"] == 0
+
+
+class TestGetExtractionRecordsCapState:
+    """Tests for the capture-cap fields (max_rows / finalized)."""
+
+    def test_exposes_max_rows_and_open_session(self, client, mock_pool):
+        """A confirmed session reports the cap and finalized=False."""
+        session_id = uuid4()
+
+        with patch(
+            "app.routes.extraction_routes.ExtractionRepository"
+        ) as MockRepo:
+            mock_repo_instance = AsyncMock()
+            mock_repo_instance.get_records.return_value = []
+            mock_repo_instance.get_status.return_value = "confirmed"
+            MockRepo.return_value = mock_repo_instance
+
+            response = client.get(f"/api/extraction/records/{session_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["maxRows"] == MAX_ROWS_PER_SESSION
+        assert data["finalized"] is False
+
+    def test_reports_finalized_session(self, client, mock_pool):
+        """A finalized session reports finalized=True."""
+        session_id = uuid4()
+
+        with patch(
+            "app.routes.extraction_routes.ExtractionRepository"
+        ) as MockRepo:
+            mock_repo_instance = AsyncMock()
+            mock_repo_instance.get_records.return_value = []
+            mock_repo_instance.get_status.return_value = "finalized"
+            MockRepo.return_value = mock_repo_instance
+
+            response = client.get(f"/api/extraction/records/{session_id}")
+
+        assert response.status_code == 200
+        assert response.json()["finalized"] is True
 
 
 class TestGetExtractionRecordsWithData:

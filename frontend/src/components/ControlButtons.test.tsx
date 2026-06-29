@@ -67,6 +67,27 @@ describe('ControlButtons', () => {
     expect(resetBtn).toHaveAttribute('aria-disabled', 'true');
   });
 
+  it('disables both buttons when the session is finalized', () => {
+    render(<ControlButtons {...defaultProps} isFinalized={true} />);
+
+    expect(screen.getByRole('button', { name: /aceptar/i })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(screen.getByRole('button', { name: /agregar nuevo/i })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+
+  it('does not call onAccept when the session is finalized', () => {
+    const onAccept = vi.fn();
+    render(<ControlButtons {...defaultProps} isFinalized={true} onAccept={onAccept} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /aceptar/i }));
+    expect(onAccept).not.toHaveBeenCalled();
+  });
+
   it('calls onAccept when "Aceptar" is clicked with valid preconditions', () => {
     const onAccept = vi.fn();
     render(<ControlButtons {...defaultProps} onAccept={onAccept} />);

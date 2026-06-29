@@ -1,5 +1,14 @@
 # Design Document — llm-extraction-excel-output
 
+> **⚠️ Partly superseded by [ADR-0013](../../../docs/adr/0013-in-memory-rows-on-demand-excel-export.md).**
+> The original design wrote the `.xlsx` to disk and overwrote it after every row
+> (needing a `file_path`). That path was replaced: records are kept in the
+> database (single source of truth), the session closes on **Finalize or 5 rows**,
+> and the final `.xlsx` is **rebuilt in memory from the schema on download** —
+> with only a column-name header (no `Tipo_Dato`/`Ejemplo_Valor` rows) and no
+> server-side file. Where this document says "saved/overwritten on disk",
+> "`file_path`", "DataFrame persisted", or "ExcelWriter", read ADR-0013 instead.
+
 ## Overview
 
 This module receives the Texto_Transcrito from the `audio-transcription-controls` module and, using the Esquema_Columnas + Contexto_Enriquecido from the `excel-template-loader` module, sends a structured prompt to the OpenAI API to extract the values corresponding to each column. The extracted values are inserted as a new Registro (row) in the Archivo_Excel and saved to disk. The Vista_Excel shows the resulting data once processing completes successfully.

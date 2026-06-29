@@ -8,6 +8,8 @@ export interface ControlButtonsProps {
   hasConfirmedSchema: boolean;
   /** Whether the LLM is currently processing */
   isLLMProcessing: boolean;
+  /** Whether the session is finalized (closed); disables capture controls */
+  isFinalized?: boolean;
   /** Callback when the user accepts the transcription */
   onAccept: () => void;
   /** Callback when the user wants to reset and start a new recording */
@@ -22,16 +24,17 @@ export function ControlButtons({
   transcribedText,
   hasConfirmedSchema,
   isLLMProcessing,
+  isFinalized = false,
   onAccept,
   onReset,
 }: ControlButtonsProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const hasText = transcribedText.trim().length > 0;
-  const isAcceptEnabled = hasText && hasConfirmedSchema && !isLLMProcessing;
+  const isAcceptEnabled = hasText && hasConfirmedSchema && !isLLMProcessing && !isFinalized;
 
   const handleAccept = () => {
-    if (isLLMProcessing) return;
+    if (isLLMProcessing || isFinalized) return;
 
     if (!hasText) {
       setErrorMessage('Primero debe grabar y transcribir un audio.');
@@ -48,7 +51,7 @@ export function ControlButtons({
   };
 
   const handleReset = () => {
-    if (isLLMProcessing) return;
+    if (isLLMProcessing || isFinalized) return;
     setErrorMessage(null);
     onReset();
   };
@@ -69,7 +72,7 @@ export function ControlButtons({
         <button
           type="button"
           className={styles.resetButton}
-          aria-disabled={isLLMProcessing}
+          aria-disabled={isLLMProcessing || isFinalized}
           onClick={handleReset}
           aria-label="Agregar nuevo audio descartando el texto actual"
         >

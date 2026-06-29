@@ -1,5 +1,6 @@
 import type {
   ExtractionResult,
+  FinalizeResponse,
   RecordsResponse,
 } from '../types/extraction';
 import { ExtractionApiError } from '../types/extraction';
@@ -51,6 +52,20 @@ async function handleResponse<T>(response: Response): Promise<T> {
   }
 
   throw new ExtractionApiError(response.status, errorCode, detail);
+}
+
+/**
+ * Extracts the filename from a Content-Disposition header, falling back to a
+ * default when the header is absent or unparseable.
+ */
+function parseFileName(header: string | null): string {
+  if (header) {
+    const match = /filename="?([^"]+)"?/.exec(header);
+    if (match) {
+      return match[1];
+    }
+  }
+  return 'export.xlsx';
 }
 
 /**
@@ -143,5 +158,60 @@ export const extractionApi = {
     );
 
     return handleResponse<RecordsResponse>(response);
+  },
+
+  /**
+   * Closes a capture session so its Excel can be downloaded. Idempotent.
+   *
+   * @param sessionId - The session to finalize
+   * @returns The finalize result (status + total rows)
+   * @throws ExtractionApiError if the session is missing (404) or not confirmable (422)
+   */
+  async finalize(sessionId: string): Promise<FinalizeResponse> {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/extraction/finalize/${sessionId}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      },
+      RECORDS_TIMEOUT_MS
+    );
+
+    return handleResponse<FinalizeResponse>(response);
+  },
+
+  /**
+   * Downloads the session's data as an .xlsx blob, reconstructed by the backend
+   * from the schema + records.
+   *
+   * @param sessionId - The session to export
+   * @returns The file blob and the server-provided filename
+   * @throws ExtractionApiError on server error (404/500)
+   */
+  async downloadExcel(
+    sessionId: string
+  ): Promise<{ blob: Blob; fileName: string }> {
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/extraction/export/${sessionId}`,
+      { method: 'GET' },
+      PROCESS_TIMEOUT_MS
+    );
+
+    if (!response.ok) {
+      let errorCode = 'UNKNOWN_ERROR';
+      let detail = `Request failed with status ${response.status}`;
+      try {
+        const errorBody = await response.json();
+        if (typeof errorBody?.errorCode === 'string') errorCode = errorBody.errorCode;
+        if (typeof errorBody?.detail === 'string') detail = errorBody.detail;
+      } catch {
+        // keep defaults
+      }
+      throw new ExtractionApiError(response.status, errorCode, detail);
+    }
+
+    const blob = await response.blob();
+    const fileName = parseFileName(response.headers.get('Content-Disposition'));
+    return { blob, fileName };
   },
 };

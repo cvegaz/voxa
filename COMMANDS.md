@@ -37,6 +37,26 @@ docker compose up -d      # start working
 docker compose down       # stop working
 ```
 
+## Fresh start from scratch (after code fixes)
+
+Use this when you want to test the app from zero: an empty database and images
+rebuilt with your latest code changes.
+
+```bash
+docker compose down -v          # stop and wipe the database (volumes)
+docker compose up -d --build    # rebuild images and start fresh
+```
+
+What happens:
+
+- `down -v` deletes the data volumes, so the database starts empty.
+- `up -d --build` rebuilds the backend/frontend images with your code changes;
+  the migrations re-run automatically on the empty database.
+- The app comes up at the first step of the flow, with no active session.
+
+> Tip: if the browser tab was already open, do a hard reload (Ctrl+F5) so it
+> does not serve cached files from the previous version.
+
 ## Service URLs
 
 | Service | URL |

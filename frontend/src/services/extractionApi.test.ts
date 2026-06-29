@@ -259,9 +259,85 @@ describe('extractionApi', () => {
         expect(error).toMatchObject({
           statusCode: 500,
           errorCode: 'DATABASE_ERROR',
-          userMessage: 'Error interno del servidor. Intente de nuevo más tarde.',
+          // Backend detail is surfaced (no longer masked by a generic message).
+          userMessage: 'Database connection failed',
         });
       }
+    });
+  });
+
+  describe('finalize', () => {
+    it('POSTs to the finalize endpoint and returns the result', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(200, { status: 'finalized', totalRows: 3 })
+      );
+
+      const result = await extractionApi.finalize('session-123');
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('/api/extraction/finalize/session-123');
+      expect(options.method).toBe('POST');
+      expect(result).toEqual({ status: 'finalized', totalRows: 3 });
+    });
+
+    it('throws ExtractionApiError when the session is missing', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(404, { detail: 'no', errorCode: 'SESSION_NOT_FOUND' })
+      );
+
+      await expect(extractionApi.finalize('session-123')).rejects.toMatchObject({
+        statusCode: 404,
+        errorCode: 'SESSION_NOT_FOUND',
+      });
+    });
+  });
+
+  describe('downloadExcel', () => {
+    it('GETs the export and returns the blob with the server filename', async () => {
+      const blob = new Blob(['xlsx-bytes']);
+      const headers = new Headers({
+        'Content-Disposition': 'attachment; filename="partido.xlsx"',
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers,
+        blob: () => Promise.resolve(blob),
+        json: () => Promise.reject(new Error('not json')),
+      } as unknown as Response);
+
+      const result = await extractionApi.downloadExcel('session-123');
+
+      const [url, options] = mockFetch.mock.calls[0];
+      expect(url).toBe('/api/extraction/export/session-123');
+      expect(options.method).toBe('GET');
+      expect(result.fileName).toBe('partido.xlsx');
+      expect(result.blob).toBe(blob);
+    });
+
+    it('falls back to a default filename when the header is absent', async () => {
+      const blob = new Blob(['xlsx-bytes']);
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        blob: () => Promise.resolve(blob),
+        json: () => Promise.reject(new Error('not json')),
+      } as unknown as Response);
+
+      const result = await extractionApi.downloadExcel('session-123');
+      expect(result.fileName).toBe('export.xlsx');
+    });
+
+    it('throws ExtractionApiError on a server error', async () => {
+      mockFetch.mockResolvedValueOnce(
+        createMockResponse(404, { detail: 'no', errorCode: 'SESSION_NOT_FOUND' })
+      );
+
+      await expect(extractionApi.downloadExcel('session-123')).rejects.toMatchObject({
+        statusCode: 404,
+        errorCode: 'SESSION_NOT_FOUND',
+      });
     });
   });
 });

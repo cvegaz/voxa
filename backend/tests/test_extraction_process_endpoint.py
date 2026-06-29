@@ -162,6 +162,27 @@ class TestExtractionProcessSessionValidation:
         assert response.json()["errorCode"] == "SESSION_NOT_CONFIRMED"
 
     @patch("app.routes.extraction_routes.ExtractionRepository")
+    def test_finalized_session_returns_422(self, MockRepo, client):
+        """A finalized session rejects new extractions with SESSION_FINALIZED."""
+        session_id = str(uuid4())
+
+        mock_repo = MockRepo.return_value
+        mock_repo.get_session_with_context = AsyncMock(
+            return_value=_session_data(session_id, status="finalized")
+        )
+
+        response = client.post(
+            "/api/extraction/process",
+            json={
+                "session_id": session_id,
+                "transcribed_text": "Texto de prueba.",
+            },
+        )
+
+        assert response.status_code == 422
+        assert response.json()["errorCode"] == "SESSION_FINALIZED"
+
+    @patch("app.routes.extraction_routes.ExtractionRepository")
     def test_replaced_session_returns_422(self, MockRepo, client):
         """Session with status 'replaced' returns 422 with SESSION_NOT_CONFIRMED."""
         session_id = str(uuid4())
@@ -286,64 +307,6 @@ class TestExtractionProcessLLMErrors:
 
         assert response.status_code == 502
         assert response.json()["errorCode"] == "LLM_INVALID_RESPONSE"
-
-
-class TestExtractionProcessFileErrors:
-    """Tests for file-related error handling."""
-
-    @patch("app.routes.extraction_routes.ExtractionOrchestrator")
-    @patch("app.routes.extraction_routes.ExtractionRepository")
-    def test_file_not_found_returns_500(self, MockRepo, MockOrch, client):
-        """FileNotFoundError returns 500 with FILE_NOT_FOUND."""
-        session_id = str(uuid4())
-
-        mock_repo = MockRepo.return_value
-        mock_repo.get_session_with_context = AsyncMock(
-            return_value=_session_data(session_id)
-        )
-
-        mock_orch = MockOrch.return_value
-        mock_orch.process = AsyncMock(
-            side_effect=FileNotFoundError("El archivo Excel no fue encontrado: /tmp/test.xlsx")
-        )
-
-        response = client.post(
-            "/api/extraction/process",
-            json={
-                "session_id": session_id,
-                "transcribed_text": "Texto de prueba.",
-            },
-        )
-
-        assert response.status_code == 500
-        assert response.json()["errorCode"] == "FILE_NOT_FOUND"
-
-    @patch("app.routes.extraction_routes.ExtractionOrchestrator")
-    @patch("app.routes.extraction_routes.ExtractionRepository")
-    def test_file_write_error_returns_500(self, MockRepo, MockOrch, client):
-        """OSError during file write returns 500 with FILE_WRITE_ERROR."""
-        session_id = str(uuid4())
-
-        mock_repo = MockRepo.return_value
-        mock_repo.get_session_with_context = AsyncMock(
-            return_value=_session_data(session_id)
-        )
-
-        mock_orch = MockOrch.return_value
-        mock_orch.process = AsyncMock(
-            side_effect=OSError("Permission denied")
-        )
-
-        response = client.post(
-            "/api/extraction/process",
-            json={
-                "session_id": session_id,
-                "transcribed_text": "Texto de prueba.",
-            },
-        )
-
-        assert response.status_code == 500
-        assert response.json()["errorCode"] == "FILE_WRITE_ERROR"
 
 
 class TestExtractionProcessDatabaseErrors:

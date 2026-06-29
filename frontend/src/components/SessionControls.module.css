@@ -1,0 +1,72 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.counter {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0;
+}
+
+.finalized {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.finalizedMessage {
+  font-size: 14px;
+  color: #2563eb;
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.finalizeButton,
+.downloadButton {
+  width: 100%;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.finalizeButton {
+  background-color: #2563eb;
+}
+
+.finalizeButton:hover:not([aria-disabled='true']) {
+  background-color: #1d4ed8;
+}
+
+.downloadButton {
+  background-color: #16a34a;
+}
+
+.downloadButton:hover:not([aria-disabled='true']) {
+  background-color: #15803d;
+}
+
+.finalizeButton:focus-visible,
+.downloadButton:focus-visible {
+  outline: 2px solid #1d4ed8;
+  outline-offset: 2px;
+}
+
+.finalizeButton[aria-disabled='true'],
+.downloadButton[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

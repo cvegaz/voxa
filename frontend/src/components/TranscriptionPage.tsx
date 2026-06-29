@@ -4,6 +4,7 @@ import { TranscriptionDisplay } from './TranscriptionDisplay';
 import { ControlButtons } from './ControlButtons';
 import { ExtractionStatus } from './ExtractionStatus';
 import type { ExtractionState } from './ExtractionStatus';
+import { SessionControls } from './SessionControls';
 import { VistaExcel } from './VistaExcel';
 import { transcriptionApi } from '../services/transcriptionApi';
 import { templateApi } from '../services/templateApi';
@@ -31,6 +32,9 @@ interface TranscriptionPageState {
   records: ExtractionRecord[];
   columns: ColumnDef[];
   isRecordsLoading: boolean;
+  maxRows: number;
+  finalized: boolean;
+  isClosing: boolean;
 }
 
 const initialState: TranscriptionPageState = {
@@ -48,6 +52,10 @@ const initialState: TranscriptionPageState = {
   records: [],
   columns: [],
   isRecordsLoading: false,
+  // Corrected by the backend on the first records fetch; 5 is the current cap.
+  maxRows: 5,
+  finalized: false,
+  isClosing: false,
 };
 
 /**
@@ -84,7 +92,12 @@ export function TranscriptionPage() {
           try {
             const recordsResponse = await extractionApi.getRecords(session.sessionId);
             if (!cancelled) {
-              setState((prev) => ({ ...prev, records: recordsResponse.records }));
+              setState((prev) => ({
+                ...prev,
+                records: recordsResponse.records,
+                maxRows: recordsResponse.maxRows,
+                finalized: recordsResponse.finalized,
+              }));
             }
           } catch {
             // Non-critical: records will be empty until first extraction
@@ -210,6 +223,8 @@ export function TranscriptionPage() {
         extractionRowNumber: result.rowNumber,
         extractionError: undefined,
         records: recordsResponse.records,
+        maxRows: recordsResponse.maxRows,
+        finalized: recordsResponse.finalized,
         transcribedText: '',
         transcriptionId: null,
       }));
@@ -261,6 +276,8 @@ export function TranscriptionPage() {
         extractionRowNumber: result.rowNumber,
         extractionError: undefined,
         records: recordsResponse.records,
+        maxRows: recordsResponse.maxRows,
+        finalized: recordsResponse.finalized,
         transcribedText: '',
         transcriptionId: null,
       }));
@@ -303,6 +320,57 @@ export function TranscriptionPage() {
     }));
   }, [state.transcriptionId]);
 
+  /**
+   * Downloads the session's Excel (reconstructed by the backend) and saves it
+   * via a temporary object URL.
+   */
+  const handleDownload = useCallback(async () => {
+    if (!state.sessionId) return;
+
+    setState((prev) => ({ ...prev, isClosing: true, error: null }));
+
+    try {
+      const { blob, fileName } = await extractionApi.downloadExcel(state.sessionId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      setState((prev) => ({ ...prev, isClosing: false }));
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof ExtractionApiError
+          ? err.userMessage
+          : 'Error al descargar el archivo. Intente de nuevo.';
+      setState((prev) => ({ ...prev, isClosing: false, error: errorMessage }));
+    }
+  }, [state.sessionId]);
+
+  /**
+   * Called when the user presses "Finalizar y descargar".
+   * Closes the session in the backend, then downloads the Excel.
+   */
+  const handleFinalize = useCallback(async () => {
+    if (!state.sessionId) return;
+
+    setState((prev) => ({ ...prev, isClosing: true, error: null }));
+
+    try {
+      await extractionApi.finalize(state.sessionId);
+      setState((prev) => ({ ...prev, finalized: true, isClosing: false }));
+      await handleDownload();
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof ExtractionApiError
+          ? err.userMessage
+          : 'Error al finalizar la sesión. Intente de nuevo.';
+      setState((prev) => ({ ...prev, isClosing: false, error: errorMessage }));
+    }
+  }, [state.sessionId, handleDownload]);
+
   return (
     <div className={styles.container}>
       {state.error && (
@@ -315,14 +383,14 @@ export function TranscriptionPage() {
       <AudioRecorder
         onRecordingComplete={handleRecordingComplete}
         onError={handleRecorderError}
-        isDisabled={state.isLLMProcessing}
+        isDisabled={state.isLLMProcessing || state.finalized}
         status={state.recorderStatus}
       />
 
       <TranscriptionDisplay
         text={state.transcribedText}
         isLoading={state.isTranscribing}
-        isDisabled={state.isLLMProcessing}
+        isDisabled={state.isLLMProcessing || state.finalized}
         onChange={handleTextChange}
       />
 
@@ -330,6 +398,7 @@ export function TranscriptionPage() {
         transcribedText={state.transcribedText}
         hasConfirmedSchema={state.hasConfirmedSchema}
         isLLMProcessing={state.isLLMProcessing}
+        isFinalized={state.finalized}
         onAccept={handleAccept}
         onReset={handleReset}
       />
@@ -340,6 +409,17 @@ export function TranscriptionPage() {
         errorMessage={state.extractionError}
         onRetry={handleRetry}
       />
+
+      {state.hasConfirmedSchema && (
+        <SessionControls
+          totalRows={state.records.length}
+          maxRows={state.maxRows}
+          finalized={state.finalized}
+          isBusy={state.isClosing}
+          onFinalize={handleFinalize}
+          onDownload={handleDownload}
+        />
+      )}
 
       <VistaExcel
         columns={state.columns}

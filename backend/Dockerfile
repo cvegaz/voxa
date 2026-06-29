@@ -28,10 +28,6 @@ RUN pip install -r requirements.txt
 # (The .dockerignore keeps .env, .venv, tests, etc. out.)
 COPY . .
 
-# Directory where the container will write the generated .xlsx files.
-# In compose we mount a volume here so it survives restarts.
-RUN mkdir -p /data
-
 # Documents that the process listens on 8000 (uvicorn). Informational only;
 # the actual port publishing is done in docker-compose.yml.
 EXPOSE 8000

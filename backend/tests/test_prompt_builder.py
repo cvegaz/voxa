@@ -167,6 +167,35 @@ class TestPromptBuilderBuild:
         assert 'usa un string vacío ""' in prompt
         assert "Respeta el tipo de dato indicado para cada columna" in prompt
 
+    def test_distinguishes_absent_from_unmentioned(self, builder, single_column_schema):
+        """The prompt instructs to use zero/absence (not empty) when the text
+        explicitly states something is absent, vs. empty when not mentioned."""
+        prompt = builder.build(
+            enriched_context="Contexto",
+            schema=single_column_schema,
+            transcribed_text="Texto",
+        )
+        # Not mentioned → empty string.
+        assert 'Si la columna no se menciona en el texto, usa un string vacío ""' in prompt
+        # Explicitly absent → zero/none value per data type.
+        assert "no hay, no existe o es ninguno" in prompt
+        assert '0 para números, "no" para booleanos' in prompt
+
+    def test_contains_few_shot_examples(self, builder, single_column_schema):
+        """The prompt includes few-shot examples demonstrating the
+        absent-vs-unmentioned distinction (numeric 0 and boolean "no")."""
+        prompt = builder.build(
+            enriched_context="Contexto",
+            schema=single_column_schema,
+            transcribed_text="Texto",
+        )
+        assert "Ejemplos ilustrativos" in prompt
+        # Numeric absence → "0", unmentioned → "".
+        assert '"CanchasTenis": "0"' in prompt
+        assert '"Horario": ""' in prompt
+        # Boolean absence → "no".
+        assert '"Alberca": "no"' in prompt
+
     def test_sections_separated_by_dividers(self, builder, single_column_schema):
         """The prompt sections are separated by standalone --- dividers."""
         prompt = builder.build(

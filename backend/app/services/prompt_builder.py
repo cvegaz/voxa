@@ -1,6 +1,6 @@
 """Prompt Builder Service.
 
-Constructs a structured prompt for Claude combining enriched context,
+Constructs a structured prompt for the model combining enriched context,
 column schema, and transcribed text for field extraction.
 """
 
@@ -8,7 +8,7 @@ from app.models import ColumnSchema
 
 
 class PromptBuilder:
-    """Builds the extraction prompt for Claude API."""
+    """Builds the extraction prompt for the OpenAI model."""
 
     def build(
         self,
@@ -16,7 +16,7 @@ class PromptBuilder:
         schema: ColumnSchema,
         transcribed_text: str,
     ) -> str:
-        """Construct the prompt for Claude.
+        """Construct the prompt for the model.
 
         Includes:
         - Enriched context as system context
@@ -30,7 +30,7 @@ class PromptBuilder:
             transcribed_text: The transcribed audio text to extract data from.
 
         Returns:
-            A formatted prompt string for Claude.
+            A formatted prompt string for the model.
         """
         # Build schema table rows
         schema_rows = "\n".join(
@@ -58,8 +58,27 @@ class PromptBuilder:
             "---\n\n"
             "Instrucciones:\n"
             "- Identifica en el texto transcrito el valor correspondiente a CADA columna.\n"
-            '- Si no puedes identificar un valor para alguna columna, usa un string vacío "".\n'
+            "- Distingue entre un dato que NO se menciona y un dato que se menciona como\n"
+            "  ausente, inexistente o nulo:\n"
+            '  - Si la columna no se menciona en el texto, usa un string vacío "".\n'
+            "  - Si el texto indica explícitamente que algo no hay, no existe o es ninguno\n"
+            '    (por ejemplo, "el lugar no cuenta con estacionamiento"), NO lo dejes vacío:\n'
+            "    usa el valor que representa cero o ausencia según el tipo de dato\n"
+            '    (0 para números, "no" para booleanos).\n'
             "- Respeta el tipo de dato indicado para cada columna.\n"
+            "\n"
+            "Ejemplos ilustrativos (muestran la diferencia entre un dato ausente y uno no\n"
+            "mencionado; NO uses estos valores en tu respuesta):\n\n"
+            "Ejemplo 1 — columnas: Lugar (texto), CanchasTenis (número entero),\n"
+            "Fuentes (número entero), Horario (texto)\n"
+            'Texto: "Visité el parque Central. No hay canchas de tenis. Tiene 3 fuentes."\n'
+            'Respuesta: {"Lugar": "Central", "CanchasTenis": "0", "Fuentes": "3", "Horario": ""}\n'
+            "(CanchasTenis es 0 porque el texto dice que NO hay; Horario queda vacío\n"
+            "porque no se menciona.)\n\n"
+            "Ejemplo 2 — columnas: Hotel (texto), Alberca (booleano)\n"
+            'Texto: "El hotel Sol no cuenta con alberca."\n'
+            'Respuesta: {"Hotel": "Sol", "Alberca": "no"}\n'
+            '(Alberca es "no" porque el texto dice explícitamente que NO la tiene.)\n\n'
             "- Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:\n"
             "{\n"
             f"  {json_example}\n"

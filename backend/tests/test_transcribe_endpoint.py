@@ -155,7 +155,7 @@ class TestTranscribeEndpointValidationErrors:
         assert response.json()["errorCode"] == "AUDIO_TOO_SHORT"
 
     def test_duration_too_long_returns_422(self, client):
-        """Duration > 30.0s returns 422 with AUDIO_TOO_LONG error."""
+        """Duration above the max (default 20.0s) returns 422 with AUDIO_TOO_LONG error."""
         response = client.post(
             "/api/transcriptions/transcribe",
             files={"file": ("audio.webm", b"\x00\x01\x02", "audio/webm")},

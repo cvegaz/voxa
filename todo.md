@@ -53,6 +53,15 @@
 - **Tests**: add fixtures and cases per language (at least ES + EN) for transcription, extraction, parsing, and Excel output.
 - **Docs**: document the list of supported languages and how the language is selected/detected.
 
+### 9. Tier-based recording limit
+- The max audio recording length is currently **20s** (free tier), enforced both
+  client-side (auto-stop in `AudioRecorder`) and server-side (`AudioValidator`).
+- The limit is already configurable (a `maxDurationSeconds` prop on the recorder
+  and a `max_duration_seconds` constructor arg on the validator, both defaulting
+  to `MAX_AUDIO_DURATION_SECONDS` in `app/constants.py`).
+- For a paid tier: source the cap from the user's plan and pass it through both
+  layers, instead of using the single free-tier default.
+
 ---
 
 # Publishing and deployment roadmap

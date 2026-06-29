@@ -2,20 +2,19 @@
 
 Validates uploaded audio files before sending to Whisper API:
 - MIME type must be one of the allowed audio formats
-- Duration must be between 1.0s and 30.0s
+- Duration must be within the configured range (default 1.0s–20.0s)
 - File must not be empty (0 bytes)
 """
 
 from fastapi import UploadFile
 
+from app.constants import MAX_AUDIO_DURATION_SECONDS, MIN_AUDIO_DURATION_SECONDS
 from app.models import ValidationResult
 
 
 class AudioValidator:
     """Validates uploaded audio files for format and duration constraints."""
 
-    MIN_DURATION_SECONDS = 1.0
-    MAX_DURATION_SECONDS = 30.0
     ALLOWED_MIME_TYPES = {
         "audio/webm",
         "audio/ogg",
@@ -23,6 +22,19 @@ class AudioValidator:
         "audio/mpeg",
         "audio/wav",
     }
+
+    def __init__(
+        self,
+        min_duration_seconds: float = MIN_AUDIO_DURATION_SECONDS,
+        max_duration_seconds: float = MAX_AUDIO_DURATION_SECONDS,
+    ):
+        """Create a validator with configurable duration bounds.
+
+        The defaults are the free-tier limits; a future paid tier can construct
+        the validator with a larger ``max_duration_seconds``.
+        """
+        self.MIN_DURATION_SECONDS = min_duration_seconds
+        self.MAX_DURATION_SECONDS = max_duration_seconds
 
     def validate(self, file: UploadFile, duration: float) -> ValidationResult:
         """Validate MIME type and duration of the uploaded audio file.

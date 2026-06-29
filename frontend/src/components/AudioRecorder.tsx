@@ -10,11 +10,18 @@ export interface AudioRecorderProps {
   isDisabled?: boolean;
   /** External status override */
   status?: 'idle' | 'recording' | 'processing' | 'error';
+  /**
+   * Maximum recording length in seconds before auto-stop. Defaults to the
+   * free-tier cap; a future paid tier can pass a larger value.
+   */
+  maxDurationSeconds?: number;
 }
 
 type RecorderStatus = 'idle' | 'recording' | 'processing' | 'error';
 
-const MAX_DURATION_SECONDS = 30;
+/** Free-tier cap for a single recording. Kept in sync with the backend
+ * AudioValidator (app/constants.py) so uploads can't bypass it. */
+const DEFAULT_MAX_DURATION_SECONDS = 20;
 const MIN_DURATION_SECONDS = 1;
 
 /**
@@ -73,7 +80,7 @@ function getActiveInputLabel(stream: MediaStream): string {
  * - Requests microphone permission on first press
  * - Toggle recording on button press (start/stop)
  * - Red pulse animation and timer during recording
- * - Auto-stop at 30 seconds
+ * - Auto-stop at the max duration (default 20s, configurable)
  * - Client-side duration validation (reject < 1s)
  * - Permission denied and hardware error handling
  */
@@ -82,6 +89,7 @@ export function AudioRecorder({
   onError,
   isDisabled = false,
   status: externalStatus,
+  maxDurationSeconds = DEFAULT_MAX_DURATION_SECONDS,
 }: AudioRecorderProps) {
   const [internalStatus, setInternalStatus] = useState<RecorderStatus>('idle');
   const [duration, setDuration] = useState(0);
@@ -227,12 +235,12 @@ export function AudioRecorder({
     }
   }, []);
 
-  // Auto-stop at 30 seconds
+  // Auto-stop once the recording reaches the max duration.
   useEffect(() => {
-    if (status === 'recording' && duration >= MAX_DURATION_SECONDS) {
+    if (status === 'recording' && duration >= maxDurationSeconds) {
       stopRecording();
     }
-  }, [status, duration, stopRecording]);
+  }, [status, duration, maxDurationSeconds, stopRecording]);
 
   const handleButtonClick = useCallback(() => {
     if (status === 'recording') {

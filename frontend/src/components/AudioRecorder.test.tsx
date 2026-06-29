@@ -216,7 +216,7 @@ describe('AudioRecorder', () => {
     expect(button).toBeDisabled();
   });
 
-  it('auto-stops recording at 30 seconds', async () => {
+  it('auto-stops recording at 20 seconds', async () => {
     render(<AudioRecorder {...defaultProps} />);
     const button = screen.getByRole('button', { name: /iniciar grabación/i });
 
@@ -225,9 +225,9 @@ describe('AudioRecorder', () => {
       fireEvent.click(button);
     });
 
-    // Advance 30 seconds — the timer tick sets duration to 30, triggering auto-stop
+    // Advance 20 seconds — the timer tick sets duration to 20, triggering auto-stop
     await act(async () => {
-      vi.advanceTimersByTime(30000);
+      vi.advanceTimersByTime(20000);
     });
 
     // The mock MediaRecorder.stop() synchronously fires onstop,

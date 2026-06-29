@@ -101,9 +101,9 @@ class TestAudioValidatorDuration:
         result = self.validator.validate(file, duration=1.0)
         assert result.is_valid is True
 
-    def test_duration_exactly_30_seconds_valid(self):
+    def test_duration_exactly_20_seconds_valid(self):
         file = _create_audio_upload()
-        result = self.validator.validate(file, duration=30.0)
+        result = self.validator.validate(file, duration=20.0)
         assert result.is_valid is True
 
     def test_duration_15_seconds_valid(self):
@@ -125,7 +125,7 @@ class TestAudioValidatorDuration:
 
     def test_duration_above_maximum_rejected(self):
         file = _create_audio_upload()
-        result = self.validator.validate(file, duration=31.0)
+        result = self.validator.validate(file, duration=21.0)
         assert result.is_valid is False
         assert result.error_code == "AUDIO_TOO_LONG"
 
@@ -143,9 +143,26 @@ class TestAudioValidatorDuration:
 
     def test_duration_just_above_maximum_rejected(self):
         file = _create_audio_upload()
-        result = self.validator.validate(file, duration=30.01)
+        result = self.validator.validate(file, duration=20.01)
         assert result.is_valid is False
         assert result.error_code == "AUDIO_TOO_LONG"
+
+
+class TestAudioValidatorConfigurableLimit:
+    """The max duration is configurable for a future paid tier."""
+
+    def test_default_validator_rejects_above_free_tier_cap(self):
+        validator = AudioValidator()
+        file = _create_audio_upload()
+        result = validator.validate(file, duration=45.0)
+        assert result.is_valid is False
+        assert result.error_code == "AUDIO_TOO_LONG"
+
+    def test_custom_max_duration_allows_longer_recording(self):
+        validator = AudioValidator(max_duration_seconds=60.0)
+        file = _create_audio_upload()
+        result = validator.validate(file, duration=45.0)
+        assert result.is_valid is True
 
 
 class TestAudioValidatorEmptyFile:

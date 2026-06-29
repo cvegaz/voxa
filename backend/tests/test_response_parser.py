@@ -54,6 +54,47 @@ class TestValidJSON:
         assert set(result.keys()) == expected_keys
 
 
+class TestDateNormalization:
+    """Tests that date-typed column values are normalized to DD-mmm-YYYY."""
+
+    @pytest.fixture
+    def date_schema(self):
+        return ColumnSchema(
+            columns=[
+                ColumnDef(index=1, name="Charla", data_type="texto", example_value="Intro"),
+                ColumnDef(index=2, name="Fecha", data_type="fecha DD/MM/YYYY", example_value="01/01/2020"),
+            ]
+        )
+
+    def test_date_column_numeric_is_normalized(self, parser, date_schema):
+        """A numeric date in a date column becomes DD-mmm-YYYY."""
+        raw = json.dumps({"Charla": "Keynote", "Fecha": "17/09/2026"})
+        result = parser.parse(raw, date_schema)
+
+        assert result["Fecha"] == "17-sep-2026"
+
+    def test_date_column_textual_is_normalized(self, parser, date_schema):
+        """A Spanish textual date in a date column becomes DD-mmm-YYYY."""
+        raw = json.dumps({"Charla": "Keynote", "Fecha": "17 de septiembre de 2026"})
+        result = parser.parse(raw, date_schema)
+
+        assert result["Fecha"] == "17-sep-2026"
+
+    def test_non_date_column_value_is_untouched(self, parser, date_schema):
+        """A date-looking value in a non-date column is left unchanged."""
+        raw = json.dumps({"Charla": "17/09/2026", "Fecha": ""})
+        result = parser.parse(raw, date_schema)
+
+        assert result["Charla"] == "17/09/2026"
+
+    def test_unparseable_date_is_preserved(self, parser, date_schema):
+        """An unrecognized date value is preserved verbatim."""
+        raw = json.dumps({"Charla": "Keynote", "Fecha": "sin fecha"})
+        result = parser.parse(raw, date_schema)
+
+        assert result["Fecha"] == "sin fecha"
+
+
 class TestMissingKeys:
     """Tests for JSON responses with missing keys."""
 

@@ -1,23 +1,25 @@
-"""ResponseParser service for parsing and validating Claude LLM JSON responses."""
+"""ResponseParser service for parsing and validating the LLM's JSON responses."""
 
 import json
 
 from app.models import ColumnSchema
+from app.services.date_normalizer import is_date_type, normalize_date_value
 from app.services.exceptions import LLMInvalidResponseError
 
 
 class ResponseParser:
-    """Parses and validates JSON responses from Claude against a ColumnSchema."""
+    """Parses and validates the model's JSON responses against a ColumnSchema."""
 
     def parse(self, raw_response: str, schema: ColumnSchema) -> dict[str, str]:
         """
-        Parse the response from Claude as JSON.
+        Parse the model's response as JSON.
         Validate that the keys correspond to the columns in the schema.
         Assign an empty string to missing or null fields.
+        Normalize values of date-typed columns to a uniform DD-mmm-YYYY form.
         Return a dict {column_name: value}.
 
         Args:
-            raw_response: Raw JSON string response from Claude.
+            raw_response: Raw JSON string response from the model.
             schema: ColumnSchema defining expected columns.
 
         Returns:
@@ -44,6 +46,9 @@ class ResponseParser:
             if value is None:
                 result[column.name] = ""
             else:
-                result[column.name] = str(value)
+                text = str(value)
+                if is_date_type(column.data_type):
+                    text = normalize_date_value(text)
+                result[column.name] = text
 
         return result

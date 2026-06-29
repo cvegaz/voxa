@@ -46,6 +46,27 @@ function formatTime(seconds: number): string {
 }
 
 /**
+ * Heuristic to flag a wireless/Bluetooth input from its device label. A Bluetooth
+ * mic is forced onto the low-fidelity HFP/HSP profile (mono, ~8-16 kHz), which
+ * degrades transcription. We can't change the profile from the web, so we warn
+ * the user so they can switch to the built-in or a wired/USB mic instead.
+ */
+function isLikelyBluetoothLabel(label: string): boolean {
+  return /airpods|bluetooth|inalámbric|wireless|headset|hands-?free|manos\s*libres|buds|beats/i.test(
+    label
+  );
+}
+
+/**
+ * Reads the label of the active audio track from a captured stream, tolerating
+ * the slightly different shapes browsers expose (getAudioTracks vs getTracks).
+ */
+function getActiveInputLabel(stream: MediaStream): string {
+  const track = stream.getAudioTracks?.()[0] ?? stream.getTracks?.()[0] ?? null;
+  return track?.label ?? '';
+}
+
+/**
  * AudioRecorder component that handles microphone capture using MediaRecorder API.
  *
  * Features:
@@ -65,6 +86,8 @@ export function AudioRecorder({
   const [internalStatus, setInternalStatus] = useState<RecorderStatus>('idle');
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // True when the captured input looks like a Bluetooth mic (low-quality HFP).
+  const [isBluetoothInput, setIsBluetoothInput] = useState(false);
 
   // The recording lifecycle is owned internally: while we're actively
   // recording, that state must win so the button shows "Detener" and can stop.
@@ -147,6 +170,10 @@ export function AudioRecorder({
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      // Detect whether the active mic is Bluetooth so we can warn the user that
+      // its low-fidelity HFP profile hurts transcription accuracy.
+      setIsBluetoothInput(isLikelyBluetoothLabel(getActiveInputLabel(stream)));
 
       const mimeType = getSupportedMimeType();
       mimeTypeRef.current = mimeType;
@@ -273,6 +300,20 @@ export function AudioRecorder({
           >
             {formatTime(duration)}
           </span>
+        </div>
+      )}
+
+      {isBluetoothInput && (
+        <div className={styles.warningContainer} role="status" aria-live="polite">
+          <span className={styles.warningIcon} aria-hidden="true">
+            🎧
+          </span>
+          <p className={styles.warningMessage}>
+            Estás usando un micrófono Bluetooth. Por limitaciones del Bluetooth, su
+            calidad de captura es baja y la transcripción puede salir incompleta.
+            Para mejor precisión, usa el micrófono del dispositivo o uno por
+            cable/USB.
+          </p>
         </div>
       )}
 

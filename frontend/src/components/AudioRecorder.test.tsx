@@ -261,6 +261,38 @@ describe('AudioRecorder', () => {
     expect(screen.getByRole('button', { name: /detener grabación/i })).toHaveTextContent('Detener');
   });
 
+  it('shows a Bluetooth warning when the active mic is a Bluetooth device', async () => {
+    const bluetoothStream = {
+      getTracks: () => [{ stop: vi.fn(), label: 'AirPods Pro' }],
+      getAudioTracks: () => [{ stop: vi.fn(), label: 'AirPods Pro' }],
+    } as unknown as MediaStream;
+    mockGetUserMedia.mockResolvedValueOnce(bluetoothStream);
+
+    render(<AudioRecorder {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /iniciar grabación/i }));
+    });
+
+    expect(screen.getByText(/micrófono Bluetooth/i)).toBeInTheDocument();
+  });
+
+  it('does not show a Bluetooth warning for a wired/built-in mic', async () => {
+    const wiredStream = {
+      getTracks: () => [{ stop: vi.fn(), label: 'MacBook Pro Microphone' }],
+      getAudioTracks: () => [{ stop: vi.fn(), label: 'MacBook Pro Microphone' }],
+    } as unknown as MediaStream;
+    mockGetUserMedia.mockResolvedValueOnce(wiredStream);
+
+    render(<AudioRecorder {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /iniciar grabación/i }));
+    });
+
+    expect(screen.queryByText(/micrófono Bluetooth/i)).not.toBeInTheDocument();
+  });
+
   it('has proper aria attributes for accessibility', async () => {
     render(<AudioRecorder {...defaultProps} />);
 

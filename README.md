@@ -22,6 +22,22 @@ Upload Excel template → detect schema (columns / types) → confirm
 OpenAI powers all of the AI: transcription with **Whisper** (`whisper-1`), plus
 context enrichment and field extraction with **`gpt-4o-mini`**.
 
+## Capture & extraction behavior
+
+A few deliberate behaviors worth knowing (and the decisions behind them):
+
+- **Recording length** is capped at **20s** per narration (free tier), enforced on
+  both the client and the server, and configurable for future paid tiers.
+- **Microphone quality**: if a Bluetooth mic is detected, Voxa shows a non-blocking
+  warning — its low-fidelity profile hurts transcription accuracy.
+  (See [ADR-0014](docs/adr/0014-audio-capture-constraints.md).)
+- **Absent vs. unmentioned**: saying *"no parking"* extracts `0` / `"no"` (an
+  explicit zero), which is kept distinct from a column that simply was not
+  mentioned (left blank).
+- **Dates** narrated in any form are normalized to `DD-mmm-YYYY` (e.g.
+  `17-sep-2026`), with no time component.
+  (See [ADR-0015](docs/adr/0015-extraction-value-semantics.md).)
+
 ## Tech stack
 
 | Layer | Technologies |

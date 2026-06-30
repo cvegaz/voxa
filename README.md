@@ -26,6 +26,13 @@ context enrichment and field extraction with **`gpt-4o-mini`**.
 
 A few deliberate behaviors worth knowing (and the decisions behind them):
 
+- **Languages**: the UI runs in **Spanish or English** (top-right switcher,
+  default Spanish). The language you have selected when you **confirm a template**
+  becomes that session's language and drives the whole pipeline — transcription,
+  the LLM prompts, the enriched context, and the date format (Spanish
+  `17-sep-2026`, English `09/17/2026`). See
+  [ADR-0016](docs/adr/0016-frontend-i18n-approach.md) and
+  [ADR-0017](docs/adr/0017-per-session-language-and-locale-formatting.md).
 - **Recording length** is capped at **20s** per narration (free tier), enforced on
   both the client and the server, and configurable for future paid tiers.
 - **Microphone quality**: if a Bluetooth mic is detected, Voxa shows a non-blocking

@@ -44,3 +44,4 @@ kept lightweight on purpose.
 | [0014](0014-audio-capture-constraints.md) | Audio capture constraints (recording length and input quality) | Accepted |
 | [0015](0015-extraction-value-semantics.md) | Extraction value semantics (absent vs. unmentioned, date formatting) | Accepted |
 | [0016](0016-frontend-i18n-approach.md) | Lightweight in-house i18n for the frontend (ES/EN) | Accepted |
+| [0017](0017-per-session-language-and-locale-formatting.md) | Per-session language and locale formatting | Accepted |

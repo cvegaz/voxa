@@ -45,8 +45,8 @@
 - [ ] Optional: auto-detect the browser language on first visit
 - [ ] Remaining LLM-side language work (prompts, date format) lives in #8
 
-### 8. Multi-language infrastructure for end-to-end records (any language)
-> Goal: when we want to run the app in any language, the infrastructure and code must automatically accept and process the record in each language end-to-end — not just translate the UI (#7). Today most of the pipeline is hardcoded to Spanish.
+### 8. Multi-language infrastructure for end-to-end records — ✅ done for ES/EN (2026-06-30, ADR-0017)
+> Goal: run the app in any language and process the record in that language end-to-end (not just the UI, #7). Implemented for **Spanish + English**; adding a third language means extending the prompt templates, the `date_normalizer` month tables, and the UI catalog (no architectural change).
 - **Per-session language**: ✅ done — `template_sessions.language` (migration 006), **fixed when the template is confirmed** (the UI sends its language to `/confirm`). Transcription, enrichment, and extraction all read it.
 - **Transcription**: ✅ done — `whisper_service.transcribe()` takes a `language` arg, and the transcribe route now uses the **session** language (`active_session.language`), not a per-request value.
 - **LLM prompts**: ✅ done — `prompt_builder.build()` and `LLMEnrichmentService.enrich()` emit ES/EN templates **and are wired** to the session language (confirm → enrichment; orchestrator → extraction prompt). Tested ES+EN.
@@ -56,9 +56,9 @@
   - Numbers: ✅ decided — left **as-is** (no normalization), to avoid mis-reading ambiguous separators (product decision, 2026-06-30).
   - Booleans: handled by the extraction prompt (the model returns the localized value / `"no"` for explicit absence); no separate normalization layer.
 - **Enriched context language**: ✅ done — `Contexto_Enriquecido` is generated in the session language (enrichment runs in es/en at confirm time).
-- **Error messages from the pipeline**: ⚠️ partial — the **frontend** error copy is fully localized (ADR-0016), but the **backend** `detail` strings (in routes/exceptions) are still Spanish. Localize those (or have the frontend rely only on `errorCode`).
-- **Tests**: add fixtures and cases per language (at least ES + EN) for transcription, extraction, parsing, and Excel output.
-- **Docs**: document the list of supported languages and how the language is selected/detected.
+- **Error messages from the pipeline**: ✅ resolved by design — the frontend localizes by `errorCode` (ES/EN, ADR-0016), so the user always sees the right language. The backend `detail` strings stay Spanish on purpose (the frontend replaces them; they only show in logs/Swagger/rare passthroughs).
+- **Tests**: ✅ ES+EN cases across the pipeline — Whisper language, prompt builder, enrichment, confirm endpoint, orchestrator, response parser, and date normalizer.
+- **Docs**: ✅ ADR-0017 (per-session language + locale formatting), plus README and CLAUDE.md notes.
 
 ### 9. Tier-based recording limit
 - The max audio recording length is currently **20s** (free tier), enforced both

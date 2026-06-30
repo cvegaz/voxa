@@ -1,7 +1,7 @@
 # 0012. Multi-language strategy (end-to-end)
 
 - **Date**: 2026-06-26
-- **Status**: Proposed
+- **Status**: Accepted — implemented by ADR-0016 (UI) and ADR-0017 (backend pipeline)
 
 ## Context
 

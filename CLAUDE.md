@@ -81,6 +81,7 @@ The OpenAI services (`whisper_service`, `llm_extraction_service`, `llm_enrichmen
 ## Notes
 
 - Architecture decisions and their rationale are recorded as ADRs in `docs/adr/` (start at `docs/adr/README.md`). When making a non-trivial design decision, add a new ADR.
+- **Multi-language (ES/EN).** The UI is bilingual via a small in-house i18n layer (`frontend/src/i18n/`, ADR-0016). A record's language is **per-session, fixed when the template is confirmed** (`template_sessions.language`); transcription, prompts (`prompt_builder`, `llm_enrichment_service`), the enriched context, and date formatting (`date_normalizer`) all read it — ES → `17-sep-2026`, EN → `09/17/2026` (ADR-0017). Keep the per-language prompt templates and the month tables in sync when touching these.
 - Detailed design specs are in `.kiro/specs/` (three modules: excel-template-loader, audio-transcription-controls, llm-extraction-excel-output).
 - Pending items and the publishing/deployment roadmap are in `todo.md`.
 - The folder's historical name was `my-data-app`; some old references may remain (e.g., comments in `docker-compose.yml`).

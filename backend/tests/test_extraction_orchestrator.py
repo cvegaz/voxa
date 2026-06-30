@@ -94,6 +94,21 @@ async def test_process_happy_path(orchestrator, session_data):
 
 
 @pytest.mark.asyncio
+async def test_process_builds_prompt_in_session_language(orchestrator, session_data):
+    """The extraction prompt is built in the session's stored language."""
+    session_data["language"] = "en"
+    orchestrator._repository.get_session_with_context.return_value = session_data
+    orchestrator._repository.save_extraction.return_value = str(uuid4())
+
+    await orchestrator.process(
+        session_id=session_data["id"],
+        transcribed_text="My name is Carlos, I'm 25 and live in Lima.",
+    )
+
+    assert orchestrator._prompt_builder.build.call_args.kwargs["language"] == "en"
+
+
+@pytest.mark.asyncio
 async def test_row_number_first_record_is_2(orchestrator, session_data):
     """First record (no existing rows) should get row_number = 2."""
     orchestrator._repository.get_session_with_context.return_value = session_data

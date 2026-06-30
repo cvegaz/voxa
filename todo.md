@@ -47,15 +47,15 @@
 
 ### 8. Multi-language infrastructure for end-to-end records (any language)
 > Goal: when we want to run the app in any language, the infrastructure and code must automatically accept and process the record in each language end-to-end — not just translate the UI (#7). Today most of the pipeline is hardcoded to Spanish.
-- **Per-session language**: store the chosen/detected language on the session (DB column + migration) so transcription, extraction, and output all stay consistent for that record.
-- **Transcription**: ✅ done — `whisper_service.transcribe()` takes a `language` arg (the UI sends es/en per request); the old hardcoded `LANGUAGE = "es"` is gone. Still pending: persist it per session rather than per request.
-- **LLM prompts**: ⚠️ partial — `prompt_builder.build()` and `LLMEnrichmentService.enrich()`/`_build_prompt()` now take a `language` arg and emit ES **or** EN templates (tested). Still pending: **wire** the session's language through the confirm route → enrichment and the extraction orchestrator → prompt (today they still call with the default `es`).
+- **Per-session language**: ✅ done — `template_sessions.language` (migration 006), **fixed when the template is confirmed** (the UI sends its language to `/confirm`). Transcription, enrichment, and extraction all read it.
+- **Transcription**: ✅ done — `whisper_service.transcribe()` takes a `language` arg, and the transcribe route now uses the **session** language (`active_session.language`), not a per-request value.
+- **LLM prompts**: ✅ done — `prompt_builder.build()` and `LLMEnrichmentService.enrich()` emit ES/EN templates **and are wired** to the session language (confirm → enrichment; orchestrator → extraction prompt). Tested ES+EN.
 - **Schema data-type names**: the Excel template type values (`texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`) are Spanish words — schema detection and type parsing must recognize the equivalents in each supported language (or normalize to a language-agnostic internal enum).
 - **Locale-aware value parsing/formatting** when writing to the Excel file:
   - Dates: `DD/MM/YYYY` vs `MM/DD/YYYY` and other locale orders.
   - Numbers: decimal/thousands separators (`1.000,50` vs `1,000.50`).
   - Booleans: localized truthy/falsy words (`sí/no`, `yes/no`, `true/false`, etc.).
-- **Enriched context language**: keep `Contexto_Enriquecido` in the record's language so later extractions match.
+- **Enriched context language**: ✅ done — `Contexto_Enriquecido` is generated in the session language (enrichment runs in es/en at confirm time).
 - **Error messages from the pipeline**: ⚠️ partial — the **frontend** error copy is fully localized (ADR-0016), but the **backend** `detail` strings (in routes/exceptions) are still Spanish. Localize those (or have the frontend rely only on `errorCode`).
 - **Tests**: add fixtures and cases per language (at least ES + EN) for transcription, extraction, parsing, and Excel output.
 - **Docs**: document the list of supported languages and how the language is selected/detected.

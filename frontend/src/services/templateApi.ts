@@ -135,6 +135,7 @@ export const templateApi = {
    *
    * @param sessionId - The session ID from the upload step
    * @param context - User's context description (50-3000 characters)
+   * @param language - UI language to fix as the session language ("es"/"en")
    * @returns Confirm response containing the enriched context
    * @throws TemplateApiError on validation failure (422), session not found (404), or LLM error (502)
    *
@@ -142,7 +143,8 @@ export const templateApi = {
    */
   async confirmTemplate(
     sessionId: string,
-    context: string
+    context: string,
+    language: string = 'es'
   ): Promise<ConfirmResponse> {
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/templates/confirm`,
@@ -151,7 +153,7 @@ export const templateApi = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sessionId, context }),
+        body: JSON.stringify({ sessionId, context, language }),
       },
       CONFIRM_TIMEOUT_MS
     );

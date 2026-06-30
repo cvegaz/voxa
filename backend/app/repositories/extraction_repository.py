@@ -177,7 +177,7 @@ class ExtractionRepository:
             row = await conn.fetchrow(
                 """
                 SELECT id, schema_json, enriched_context, file_path,
-                       dataframe_json, status
+                       dataframe_json, status, language
                 FROM template_sessions
                 WHERE id = $1
                 """,
@@ -202,4 +202,5 @@ class ExtractionRepository:
                 "file_path": row["file_path"],
                 "dataframe_json": dataframe_json,
                 "status": row["status"],
+                "language": row["language"],
             }

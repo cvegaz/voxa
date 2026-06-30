@@ -140,12 +140,16 @@ async def confirm_template(request: Request, body: ConfirmRequest):
             ).model_dump(),
         )
 
-    # 3. Call LLM enrichment
+    # Only the languages the UI offers are honored; fall back to Spanish.
+    language = body.language if body.language in ("es", "en") else "es"
+
+    # 3. Call LLM enrichment in the session language
     llm_service = LLMEnrichmentService()
     try:
         enriched_context = await llm_service.enrich(
             context=body.context,
             schema=session.column_schema,
+            language=language,
         )
     except LLMUnavailableError as e:
         raise HTTPException(
@@ -169,6 +173,7 @@ async def confirm_template(request: Request, body: ConfirmRequest):
         session_id=str(body.session_id),
         enriched_context=enriched_context,
         user_context=body.context,
+        language=language,
     )
 
     # 5. Return enriched context

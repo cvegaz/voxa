@@ -19,7 +19,7 @@ export interface ContextInputProps {
  * and triggers LLM enrichment via the backend.
  */
 export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [context, setContext] = useState('');
   const [state, setState] = useState<ComponentState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -46,7 +46,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
     setErrorMessage('');
 
     try {
-      const response = await templateApi.confirmTemplate(sessionId, context);
+      const response = await templateApi.confirmTemplate(sessionId, context, lang);
       setState('success');
       onConfirmSuccess(response.enrichedContext);
     } catch (err: unknown) {
@@ -57,7 +57,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
         setErrorMessage(t('common.unexpectedError'));
       }
     }
-  }, [sessionId, context, isValid, state, onConfirmSuccess, t]);
+  }, [sessionId, context, isValid, state, onConfirmSuccess, t, lang]);
 
   const handleRetry = useCallback(() => {
     handleConfirm();

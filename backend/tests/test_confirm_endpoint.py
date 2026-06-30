@@ -102,6 +102,7 @@ class TestConfirmEndpointSuccess:
         mock_llm.enrich.assert_called_once_with(
             context=context,
             schema=session.column_schema,
+            language="es",
         )
 
     @patch("app.routes.template_routes.LLMEnrichmentService")
@@ -130,7 +131,32 @@ class TestConfirmEndpointSuccess:
             session_id=session_id,
             enriched_context=enriched,
             user_context=context,
+            language="es",
         )
+
+    @patch("app.routes.template_routes.LLMEnrichmentService")
+    @patch("app.routes.template_routes.TemplateRepository")
+    def test_confirm_fixes_requested_language(self, MockRepo, MockLLM, client):
+        """The requested UI language is used for enrichment and stored on the session."""
+        session_id = str(uuid4())
+        session = _make_session(session_id)
+        context = _valid_context()
+
+        mock_repo = MockRepo.return_value
+        mock_repo.get_session_by_id = AsyncMock(return_value=session)
+        mock_repo.confirm_session = AsyncMock(return_value=None)
+
+        mock_llm = MockLLM.return_value
+        mock_llm.enrich = AsyncMock(return_value="enriched")
+
+        response = client.post(
+            "/api/templates/confirm",
+            json={"session_id": session_id, "context": context, "language": "en"},
+        )
+
+        assert response.status_code == 200
+        assert mock_llm.enrich.call_args.kwargs["language"] == "en"
+        assert mock_repo.confirm_session.call_args.kwargs["language"] == "en"
 
 
 class TestConfirmEndpointSessionNotFound:

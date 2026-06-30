@@ -175,6 +175,7 @@ async def test_get_session_with_context_returns_dict(mock_pool):
         "file_path": "/uploads/test.xlsx",
         "dataframe_json": [{"Nombre": "Juan"}],
         "status": "confirmed",
+        "language": "es",
     }
 
     repo = ExtractionRepository(pool)
@@ -204,6 +205,7 @@ async def test_get_session_with_context_handles_string_schema(mock_pool):
         "file_path": "/path/to/file.xlsx",
         "dataframe_json": "[]",
         "status": "confirmed",
+        "language": "es",
     }
 
     repo = ExtractionRepository(pool)
@@ -239,6 +241,7 @@ async def test_get_session_with_context_queries_correct_columns(mock_pool):
         "file_path": None,
         "dataframe_json": "[]",
         "status": "pending",
+        "language": "es",
     }
 
     repo = ExtractionRepository(pool)

@@ -123,6 +123,7 @@ describe('templateApi', () => {
       expect(JSON.parse(options.body)).toEqual({
         sessionId: 'session-123',
         context: 'A'.repeat(100),
+        language: 'es',
       });
       expect(result).toEqual(mockResponse);
     });

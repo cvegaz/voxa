@@ -66,12 +66,14 @@ class ExtractionOrchestrator:
 
         schema = ColumnSchema(**session["schema_json"])
         enriched_context = session["enriched_context"] or ""
+        language = session.get("language") or "es"
 
-        # 2. Build prompt
+        # 2. Build prompt in the session's language
         prompt = self._prompt_builder.build(
             enriched_context=enriched_context,
             schema=schema,
             transcribed_text=transcribed_text,
+            language=language,
         )
 
         # 3. Call LLM

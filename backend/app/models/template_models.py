@@ -38,6 +38,7 @@ class TemplateSession(BaseModel):
     enriched_context: Optional[str] = None
     file_name: str
     column_count: int
+    language: str = "es"
     created_at: datetime
     confirmed_at: Optional[datetime] = None
     replaced_at: Optional[datetime] = None
@@ -60,6 +61,8 @@ class ConfirmRequest(CamelModel):
 
     session_id: UUID
     context: str
+    # UI language at confirm time; fixes the session's language (es/en).
+    language: str = "es"
 
 
 class ConfirmResponse(CamelModel):

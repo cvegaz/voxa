@@ -60,6 +60,7 @@ class TemplateRepository:
         session_id: str,
         enriched_context: str,
         user_context: Optional[str] = None,
+        language: str = "es",
     ) -> None:
         """Update a session with enriched context and set status to 'confirmed'.
 
@@ -67,6 +68,7 @@ class TemplateRepository:
             session_id: The UUID of the session to confirm.
             enriched_context: The LLM-generated enriched context.
             user_context: Optional original user-provided context.
+            language: The session language ("es"/"en"), fixed at confirm time.
 
         Raises:
             ValueError: If the session is not found or not in 'pending' status.
@@ -78,12 +80,14 @@ class TemplateRepository:
                 SET status = 'confirmed',
                     enriched_context = $1,
                     user_context = $2,
-                    confirmed_at = $3
-                WHERE id = $4
+                    language = $3,
+                    confirmed_at = $4
+                WHERE id = $5
                   AND status = 'pending'
                 """,
                 enriched_context,
                 user_context,
+                language,
                 datetime.now(timezone.utc),
                 UUID(session_id),
             )
@@ -102,7 +106,7 @@ class TemplateRepository:
             row = await conn.fetchrow(
                 """
                 SELECT id, status, schema_json, dataframe_json, user_context,
-                       enriched_context, file_name, column_count,
+                       enriched_context, file_name, column_count, language,
                        created_at, confirmed_at, replaced_at
                 FROM template_sessions
                 WHERE status = 'confirmed'
@@ -151,7 +155,7 @@ class TemplateRepository:
             row = await conn.fetchrow(
                 """
                 SELECT id, status, schema_json, dataframe_json, user_context,
-                       enriched_context, file_name, column_count,
+                       enriched_context, file_name, column_count, language,
                        created_at, confirmed_at, replaced_at
                 FROM template_sessions
                 WHERE id = $1
@@ -206,6 +210,7 @@ class TemplateRepository:
             enriched_context=row["enriched_context"],
             file_name=row["file_name"],
             column_count=row["column_count"],
+            language=row["language"],
             created_at=row["created_at"],
             confirmed_at=row["confirmed_at"],
             replaced_at=row["replaced_at"],

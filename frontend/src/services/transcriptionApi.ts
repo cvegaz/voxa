@@ -113,16 +113,10 @@ export const transcriptionApi = {
    *
    * Timeout: 30 seconds
    */
-  async transcribeAudio(
-    file: Blob,
-    duration: number,
-    language: string = 'es'
-  ): Promise<TranscribeResponse> {
+  async transcribeAudio(file: Blob, duration: number): Promise<TranscribeResponse> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('duration', String(duration));
-    // Expected spoken language for Whisper (and downstream input language).
-    formData.append('language', language);
 
     const response = await fetchWithTimeout(
       `${API_BASE_URL}/transcriptions/transcribe`,

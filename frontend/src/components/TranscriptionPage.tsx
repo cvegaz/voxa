@@ -78,7 +78,7 @@ const initialState: TranscriptionPageState = {
  * Validates: Requirements 1.5, 2.2, 3.3, 3.6, 3.7, 3.8
  */
 export function TranscriptionPage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [state, setState] = useState<TranscriptionPageState>(initialState);
 
   // Check for confirmed schema on mount, store sessionId and columns, fetch records
@@ -137,7 +137,7 @@ export function TranscriptionPage() {
       }));
 
       try {
-        const response = await transcriptionApi.transcribeAudio(audioBlob, duration, lang);
+        const response = await transcriptionApi.transcribeAudio(audioBlob, duration);
         setState((prev) => ({
           ...prev,
           transcribedText: response.text,
@@ -163,7 +163,7 @@ export function TranscriptionPage() {
         }));
       }
     },
-    [lang, t]
+    [t]
   );
 
   /**

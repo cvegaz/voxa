@@ -1,5 +1,15 @@
 # Voxa
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React_18-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-412991?logo=openai&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+<!-- Add once CI is set up (step 3): ![CI](https://github.com/<owner>/voxa/actions/workflows/ci.yml/badge.svg) -->
+
 > Turn spoken narration into structured spreadsheet data. Talk, and Voxa fills in
 > your Excel file.
 
@@ -8,8 +18,14 @@ the information out loud, and an LLM transcribes your speech and extracts the ri
 values into the right columns — appending a new row to your spreadsheet. No typing,
 no forms.
 
-<!-- TODO: add a short demo GIF/video of the real flow here — it sells the project more than anything else. -->
-> _Demo GIF coming soon._
+<!--
+  ⬇️ The demo is what sells this project. Record a ~20–30s screen capture of the
+  real flow (upload template → narrate → row appears → download .xlsx), export it
+  as a GIF, and drop it at docs/assets/demo.gif — this image tag will pick it up.
+  Until then the alt text shows. Tools: ScreenToGif (Windows), or record MP4 and
+  convert with ffmpeg/ezgif.
+-->
+![Voxa demo — narrate your data, watch it fill the spreadsheet](docs/assets/demo.gif)
 
 ## How it works
 

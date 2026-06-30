@@ -56,7 +56,7 @@
   - Numbers: decimal/thousands separators (`1.000,50` vs `1,000.50`).
   - Booleans: localized truthy/falsy words (`sí/no`, `yes/no`, `true/false`, etc.).
 - **Enriched context language**: keep `Contexto_Enriquecido` in the record's language so later extractions match.
-- **Error messages from the pipeline**: LLM/transcription/validation errors surfaced to the user should be localized (ties into #7).
+- **Error messages from the pipeline**: ⚠️ partial — the **frontend** error copy is fully localized (ADR-0016), but the **backend** `detail` strings (in routes/exceptions) are still Spanish. Localize those (or have the frontend rely only on `errorCode`).
 - **Tests**: add fixtures and cases per language (at least ES + EN) for transcription, extraction, parsing, and Excel output.
 - **Docs**: document the list of supported languages and how the language is selected/detected.
 

@@ -2,10 +2,15 @@
 
 ## Pending discussion and implementation
 
-### 1. Record confirmation before saving
-- Show the user the fields extracted by the LLM before inserting them into the Excel file
-- Allow editing individual values before confirming the insertion
-- Decide whether this is a mandatory step or a configurable option
+### 1. Record review & editing
+- [x] **Post-accept verification (done, 2026-06-30)**: after "Aceptar", the narrated
+  text stays visible (read-only) and the new row appears in the table, so the user
+  can check that what they dictated was captured correctly.
+- [ ] **Edit the extracted values** — show the LLM-extracted field values and allow
+  correcting each one. Today a wrong extraction cannot be fixed from the app (the
+  row is committed as-is). Could be a pre-commit confirm step and/or inline editing
+  of an existing row.
+- [ ] Decide whether the edit/confirm step is mandatory or a configurable option.
 
 ### 2. Narration language
 - Define whether the app will support only Spanish or multiple languages

@@ -1,5 +1,6 @@
 from .acceptance_validator import AcceptanceValidator
 from .audio_validator import AudioValidator
+from .contact_service import ContactService
 from .context_validator import ContextValidator
 from .dataframe_converter import DataFrameConverter
 from .excel_exporter import ExcelExporter
@@ -22,6 +23,7 @@ from .whisper_service import WhisperTranscriptionService
 __all__ = [
     "AcceptanceValidator",
     "AudioValidator",
+    "ContactService",
     "ContextValidator",
     "DataFrameConverter",
     "ExcelExporter",

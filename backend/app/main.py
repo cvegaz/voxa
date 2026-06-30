@@ -1,16 +1,32 @@
 """FastAPI application entry point."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.database import close_pool, get_pool
+from app.rate_limit import limiter
+from app.routes.contact_routes import router as contact_router
 from app.routes.extraction_routes import router as extraction_router
 from app.routes.template_routes import router as template_router
 from app.routes.transcription_routes import router as transcription_router
+
+# Origins allowed to call the API cross-origin. The app frontend is served
+# same-origin (Nginx proxies /api), but the public landing page is a separate
+# static site on its own origin, so its contact form needs CORS. Comma-separated
+# list via LANDING_ORIGINS; defaults to the local dev servers.
+_DEFAULT_LANDING_ORIGINS = "http://localhost:5173,http://localhost:4173"
+LANDING_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("LANDING_ORIGINS", _DEFAULT_LANDING_ORIGINS).split(",")
+    if origin.strip()
+]
 
 
 @asynccontextmanager
@@ -29,6 +45,29 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Rate limiting (slowapi) — the limiter instance must live on app.state so the
+# per-route @limiter.limit decorators can find it.
+app.state.limiter = limiter
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=LANDING_ORIGINS,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
+)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Flatten slowapi's 429 to the frontend error contract."""
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": "Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.",
+            "errorCode": "RATE_LIMITED",
+        },
+    )
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -75,3 +114,4 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(template_router)
 app.include_router(transcription_router)
 app.include_router(extraction_router)
+app.include_router(contact_router)

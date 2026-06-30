@@ -90,6 +90,28 @@ docker compose up --build
 On startup the backend applies database migrations (`scripts/migrate.py`) before
 serving.
 
+## Landing page
+
+A standalone marketing site lives in [`landing/`](landing/) — a separate static
+Vite + React app (same "Slate & Ink" brand and bilingual ES/EN i18n as the
+product). It explains what Voxa does, shows an animated voice→Excel demo, the
+real **playPro Stats** case study, the tech stack, and a contact form that posts
+to the backend's `POST /api/contact` endpoint (persisted in Postgres, optional
+email notification, honeypot + rate-limit anti-spam).
+
+```bash
+cd landing
+npm install
+npm run dev        # Vite on :5173, proxies /api → localhost:8000
+npm test           # vitest run
+npm run build      # static site in landing/dist/ (deploy to any CDN)
+```
+
+Configure external links and the backend origin via `landing/.env` (see
+`landing/.env.example`). The site deploys independently of the app (e.g. S3 +
+CloudFront, Vercel, or Netlify); set `LANDING_ORIGINS` on the backend to allow
+its origin through CORS.
+
 ## Local development (without Docker)
 
 **Backend**
@@ -162,4 +184,4 @@ llm-extraction-excel-output
 
 ## License
 
-Not yet licensed (MIT planned). Until a `LICENSE` file is added, all rights are reserved.
+Licensed under the [Apache License 2.0](LICENSE). © 2026 Carlos Vega.

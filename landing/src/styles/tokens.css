@@ -1,0 +1,73 @@
+/* ============================================================================
+   Voxa — Design tokens ("Slate & Ink")
+   COPIED VERBATIM from frontend/src/index.css so the landing matches the app's
+   brand exactly. These tokens are stable; we copy rather than share a package
+   to keep the two builds fully decoupled. If the app palette changes, sync here.
+   ============================================================================ */
+:root {
+  /* Typography */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI',
+    Roboto, sans-serif;
+
+  /* Neutrals (zinc) */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f4f4f5;
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-text: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+
+  /* Accent (deep blue — serious & trustworthy) */
+  --color-accent: #1d4ed8;
+  --color-accent-hover: #1e40af;
+  --color-accent-active: #1e3a8a;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle-bg: #eff4ff;
+  --color-accent-subtle-border: #dbe4fe;
+  --color-accent-subtle-fg: #1e40af;
+
+  /* Success */
+  --color-success: #15803d;
+  --color-success-hover: #166534;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-success-fg: #166534;
+
+  /* Danger */
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-danger-fg: #991b1b;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Elevation — soft, low-contrast (premium, not flashy) */
+  --shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-sm: 0 1px 3px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-md: 0 6px 16px rgba(24, 24, 27, 0.06), 0 2px 6px rgba(24, 24, 27, 0.04);
+  --shadow-lg: 0 16px 40px rgba(24, 24, 27, 0.1), 0 4px 12px rgba(24, 24, 27, 0.05);
+
+  /* Focus ring — consistent across all interactive elements */
+  --ring: 0 0 0 3px rgba(29, 78, 216, 0.28);
+
+  --transition: 0.18s ease;
+
+  /* Layout */
+  --content-max: 1080px;
+
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

@@ -1,3 +1,8 @@
+from .contact_models import (
+    ContactMessage,
+    ContactRequest,
+    ContactResponse,
+)
 from .extraction_models import (
     ExtractionRecord,
     ExtractionRequest,
@@ -29,6 +34,9 @@ from .transcription_models import (
 )
 
 __all__ = [
+    "ContactMessage",
+    "ContactRequest",
+    "ContactResponse",
     "ColumnDef",
     "ColumnSchema",
     "TemplateSession",

@@ -114,6 +114,15 @@
 - [ ] Change the repo visibility to public in GitHub Settings
 - [ ] Add it to your profile/portfolio with a link to the demo
 
+### B.4 Landing page (done — `landing/`)
+- [x] Standalone static marketing site (Vite + React + TS), bilingual ES/EN, same brand
+- [x] Sections: hero with animated voice→Excel mockup, how-it-works, features, the
+  **playPro Stats** case study + "your domain?" hook, tech stack, contact form, footer
+- [x] Contact form → `POST /api/contact` (Postgres + optional email, honeypot + rate-limit)
+- [ ] Fill `landing/.env` with real links (GitHub, deployed app, LinkedIn, Calendly, email)
+- [ ] Add an `og-image.png` to `landing/public/` and record a real demo GIF/video
+- [ ] Deploy the landing (S3+CloudFront / Vercel / Netlify) and set backend `LANDING_ORIGINS`
+
 ## Phase C — Security for deployment and production
 
 > Do ALL of this BEFORE exposing the app to the internet anonymously.
@@ -124,7 +133,9 @@
 - [ ] Production `DATABASE_URL` separate from the dev one
 
 ### C.2 Cost and abuse control (because you pay for every call)
-- [ ] Rate limiting in the backend (requests per IP/user per minute) — e.g., slowapi for FastAPI
+- [~] Rate limiting in the backend (requests per IP/user per minute) — `slowapi` is
+  now wired (`app/rate_limit.py`) and applied to `POST /api/contact`. Still pending:
+  extend it to the OpenAI-spending endpoints (transcribe/extract).
 - [ ] Size and duration limits for accepted audio in `transcription_routes.py`
 - [ ] Authentication / login (even a basic one) so that the service is NOT anonymous and open
 - [ ] Keep the monthly OpenAI spending cap active

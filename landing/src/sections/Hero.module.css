@@ -1,0 +1,71 @@
+.hero {
+  padding: 4rem 1.5rem 5rem;
+  background:
+    radial-gradient(1200px 480px at 75% -10%, var(--color-accent-subtle-bg), transparent 60%),
+    var(--color-bg);
+}
+
+.inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 3.5rem;
+  align-items: center;
+}
+
+.copy {
+  max-width: 36rem;
+}
+
+.badge {
+  display: inline-block;
+  margin: 0 0 1.25rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-accent-subtle-fg);
+  background-color: var(--color-accent-subtle-bg);
+  border: 1px solid var(--color-accent-subtle-border);
+  border-radius: var(--radius-full);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(2.25rem, 5.5vw, 3.5rem);
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.subtitle {
+  margin: 1.25rem 0 0;
+  font-size: 1.1875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.ctas {
+  margin-top: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.visual {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+  .copy {
+    max-width: none;
+  }
+  .visual {
+    order: -1;
+  }
+}

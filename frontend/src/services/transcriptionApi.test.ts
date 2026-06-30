@@ -91,7 +91,7 @@ describe('transcriptionApi', () => {
       ).rejects.toMatchObject({
         statusCode: 422,
         errorCode: 'AUDIO_TOO_LONG',
-        userMessage: 'El audio es demasiado largo. Máximo 30 segundos.',
+        userMessage: 'El audio es demasiado largo. Máximo 20 segundos.',
       });
     });
 

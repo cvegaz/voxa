@@ -1,3 +1,5 @@
+import { IconDownload } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './SessionControls.module.css';
 
 export interface SessionControlsProps {
@@ -31,29 +33,29 @@ export function SessionControls({
   onFinalize,
   onDownload,
 }: SessionControlsProps) {
+  const { t } = useI18n();
   const reachedCap = totalRows >= maxRows;
 
   return (
     <div className={styles.container}>
       <p className={styles.counter} aria-live="polite">
-        {totalRows} / {maxRows} registros
+        {t('session.counter', { count: totalRows, max: maxRows })}
       </p>
 
       {finalized ? (
         <div className={styles.finalized}>
           <p className={styles.finalizedMessage} role="status">
-            {reachedCap
-              ? `Límite de ${maxRows} registros alcanzado. La sesión se finalizó.`
-              : 'Sesión finalizada.'}
+            {reachedCap ? t('session.capReached', { max: maxRows }) : t('session.finalized')}
           </p>
           <button
             type="button"
             className={styles.downloadButton}
             onClick={onDownload}
             aria-disabled={isBusy}
-            aria-label="Descargar el archivo Excel"
+            aria-label={t('session.ariaDownload')}
           >
-            Descargar Excel
+            <IconDownload aria-hidden="true" />
+            {t('session.download')}
           </button>
         </div>
       ) : (
@@ -62,9 +64,10 @@ export function SessionControls({
           className={styles.finalizeButton}
           onClick={onFinalize}
           aria-disabled={isBusy || totalRows === 0}
-          aria-label="Finalizar la sesión y descargar el Excel"
+          aria-label={t('session.ariaFinalize')}
         >
-          Finalizar y descargar
+          <IconDownload aria-hidden="true" />
+          {t('session.finalizeAndDownload')}
         </button>
       )}
     </div>

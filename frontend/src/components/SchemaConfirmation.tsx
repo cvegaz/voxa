@@ -1,4 +1,7 @@
 import type { ColumnSchema } from '../types/template';
+import { IconDocument } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
+import styles from './SchemaConfirmation.module.css';
 
 export interface SchemaConfirmationProps {
   /** The extracted column schema to display */
@@ -21,40 +24,53 @@ export function SchemaConfirmation({
   onConfirm,
   onChangeFile,
 }: SchemaConfirmationProps) {
+  const { t } = useI18n();
   return (
-    <section aria-labelledby="schema-confirmation-title">
-      <h2 id="schema-confirmation-title">Esquema detectado</h2>
-      <p>
-        Archivo: <strong>{fileName}</strong>
+    <section className={styles.section} aria-labelledby="schema-confirmation-title">
+      <h2 id="schema-confirmation-title" className={styles.title}>
+        {t('schema.title')}
+      </h2>
+      <p className={styles.fileLine}>
+        <IconDocument aria-hidden="true" />
+        <span className={styles.fileName}>{fileName}</span>
       </p>
 
-      <table aria-label="Esquema de columnas del archivo cargado">
-        <thead>
-          <tr>
-            <th scope="col">#</th>
-            <th scope="col">Nombre</th>
-            <th scope="col">Tipo de Dato</th>
-            <th scope="col">Ejemplo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {schema.columns.map((col) => (
-            <tr key={col.index}>
-              <td>{col.index}</td>
-              <td>{col.name}</td>
-              <td>{col.dataType}</td>
-              <td>{col.exampleValue}</td>
+      <div className={styles.tableWrap}>
+        <table
+          className={styles.table}
+          aria-label={t('schema.ariaTable')}
+        >
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">{t('schema.colName')}</th>
+              <th scope="col">{t('schema.colType')}</th>
+              <th scope="col">{t('schema.colExample')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {schema.columns.map((col) => (
+              <tr key={col.index}>
+                <td className={styles.indexCell}>{col.index}</td>
+                <td>{col.name}</td>
+                <td>{col.dataType}</td>
+                <td>{col.exampleValue}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div>
-        <button type="button" onClick={onConfirm}>
-          Confirmar
+      <div className={styles.actions}>
+        <button type="button" className={styles.confirmButton} onClick={onConfirm}>
+          {t('schema.confirm')}
         </button>
-        <button type="button" onClick={onChangeFile}>
-          Cambiar archivo
+        <button
+          type="button"
+          className={styles.changeButton}
+          onClick={onChangeFile}
+        >
+          {t('schema.changeFile')}
         </button>
       </div>
     </section>

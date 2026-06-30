@@ -3,8 +3,12 @@ import { FileUpload } from './components/FileUpload';
 import { SchemaConfirmation } from './components/SchemaConfirmation';
 import { ContextInput } from './components/ContextInput';
 import { TranscriptionPage } from './components/TranscriptionPage';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { IconMic } from './components/Icons';
+import { useI18n } from './i18n/LanguageContext';
 import { templateApi } from './services/templateApi';
 import type { UploadResponse } from './types/template';
+import styles from './App.module.css';
 
 /**
  * Steps in the application flow. Each one maps to a screen:
@@ -18,6 +22,7 @@ import type { UploadResponse } from './types/template';
 type Step = 'loading' | 'upload' | 'schema' | 'context' | 'transcription';
 
 export function App() {
+  const { t } = useI18n();
   const [step, setStep] = useState<Step>('loading');
   // We keep the upload response so we can pass schema/sessionId to the
   // following steps of Module 1.
@@ -74,46 +79,68 @@ export function App() {
     setStep('transcription');
   }, []);
 
+  const header = (
+    <header className={styles.header}>
+      <div className={styles.langBar}>
+        <LanguageSwitcher />
+      </div>
+      <div className={styles.brand}>
+        <span className={styles.brandMark}>
+          <IconMic />
+        </span>
+        <h1 className={styles.brandName}>Voxa</h1>
+      </div>
+      <p className={styles.tagline}>{t('app.tagline')}</p>
+    </header>
+  );
+
   if (step === 'loading') {
     return (
-      <main style={pageStyle}>
-        <p>Cargando…</p>
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          {header}
+          <div className={styles.card}>
+            <div className={styles.loading} role="status" aria-live="polite">
+              <div className={styles.loadingSpinner} aria-hidden="true" />
+              <p>{t('app.loading')}</p>
+            </div>
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main style={pageStyle}>
-      <h1 style={{ marginBottom: '0.25rem' }}>Voxa</h1>
-      <p style={{ marginTop: 0, color: '#666' }}>
-        Captura de datos por voz con extracción mediante IA
-      </p>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        {header}
 
-      {step === 'upload' && <FileUpload onUploadSuccess={handleUploadSuccess} />}
+        <div className={styles.card}>
+          {step === 'upload' && (
+            <FileUpload onUploadSuccess={handleUploadSuccess} />
+          )}
 
-      {step === 'schema' && upload && (
-        <SchemaConfirmation
-          schema={upload.schema}
-          fileName={upload.fileName}
-          onConfirm={handleSchemaConfirm}
-          onChangeFile={handleChangeFile}
-        />
-      )}
+          {step === 'schema' && upload && (
+            <SchemaConfirmation
+              schema={upload.schema}
+              fileName={upload.fileName}
+              onConfirm={handleSchemaConfirm}
+              onChangeFile={handleChangeFile}
+            />
+          )}
 
-      {step === 'context' && upload && (
-        <ContextInput
-          sessionId={upload.sessionId}
-          onConfirmSuccess={handleContextConfirmed}
-        />
-      )}
+          {step === 'context' && upload && (
+            <ContextInput
+              sessionId={upload.sessionId}
+              onConfirmSuccess={handleContextConfirmed}
+            />
+          )}
 
-      {step === 'transcription' && <TranscriptionPage />}
+          {step === 'transcription' && <TranscriptionPage />}
+        </div>
+
+        <footer className={styles.footer}>{t('app.footer')}</footer>
+      </div>
     </main>
   );
 }
-
-const pageStyle: React.CSSProperties = {
-  maxWidth: 720,
-  margin: '0 auto',
-  padding: '2rem 1.5rem',
-};

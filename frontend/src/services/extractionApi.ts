@@ -4,6 +4,7 @@ import type {
   RecordsResponse,
 } from '../types/extraction';
 import { ExtractionApiError } from '../types/extraction';
+import { localized } from '../i18n/LanguageContext';
 
 /**
  * Base URL for the API. Defaults to '/api' which works with Vite proxy in dev,
@@ -87,13 +88,19 @@ function fetchWithTimeout(
       throw new ExtractionApiError(
         408,
         'TIMEOUT',
-        'La solicitud ha superado el tiempo de espera. Intente de nuevo.'
+        localized(
+          'La solicitud ha superado el tiempo de espera. Intente de nuevo.',
+          'The request timed out. Please try again.'
+        )
       );
     }
     throw new ExtractionApiError(
       0,
       'NETWORK_ERROR',
-      'Error de conexión. Verifique su conexión a internet e intente de nuevo.'
+      localized(
+        'Error de conexión. Verifique su conexión a internet e intente de nuevo.',
+        'Connection error. Check your internet connection and try again.'
+      )
     );
   }).finally(() => {
     clearTimeout(timeoutId);

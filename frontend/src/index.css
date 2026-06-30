@@ -1,7 +1,75 @@
+/* ============================================================================
+   Voxa — Design tokens ("Slate & Ink")
+   A restrained, professional SaaS palette: zinc neutrals + one deep-blue accent.
+   All component styles consume these variables; avoid hard-coded colors.
+   ============================================================================ */
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  background-color: #f5f6f8;
+  /* Typography */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI',
+    Roboto, sans-serif;
+
+  /* Neutrals (zinc) */
+  --color-bg: #fafafa;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f4f4f5;
+  --color-border: #e4e4e7;
+  --color-border-strong: #d4d4d8;
+  --color-text: #18181b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+
+  /* Accent (deep blue — serious & trustworthy) */
+  --color-accent: #1d4ed8;
+  --color-accent-hover: #1e40af;
+  --color-accent-active: #1e3a8a;
+  --color-accent-fg: #ffffff;
+  --color-accent-subtle-bg: #eff4ff;
+  --color-accent-subtle-border: #dbe4fe;
+  --color-accent-subtle-fg: #1e40af;
+
+  /* Success */
+  --color-success: #15803d;
+  --color-success-hover: #166534;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-success-fg: #166534;
+
+  /* Danger */
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
+  --color-danger-bg: #fef2f2;
+  --color-danger-border: #fecaca;
+  --color-danger-fg: #991b1b;
+
+  /* Warning */
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-warning-fg: #92400e;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Elevation — soft, low-contrast (premium, not flashy) */
+  --shadow-xs: 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-sm: 0 1px 3px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-md: 0 6px 16px rgba(24, 24, 27, 0.06), 0 2px 6px rgba(24, 24, 27, 0.04);
+
+  /* Focus ring — consistent across all interactive elements */
+  --ring: 0 0 0 3px rgba(29, 78, 216, 0.28);
+
+  --transition: 0.18s ease;
+
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -11,6 +79,12 @@
 body {
   margin: 0;
   min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 button {
@@ -32,48 +106,91 @@ button:disabled {
 
 .context-input__label {
   font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--color-text);
 }
 
 .context-input__textarea {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #c4c8cf;
-  border-radius: 8px;
+  padding: 0.75rem 0.875rem;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
   resize: vertical;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.context-input__textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--ring);
 }
 
 .context-input__textarea--invalid {
-  border-color: #d33;
+  border-color: var(--color-danger);
 }
 
 .context-input__counter {
-  font-size: 0.85rem;
-  color: #666;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
   text-align: right;
 }
 
 .context-input__validation,
 .context-input__error-text {
-  color: #d33;
+  color: var(--color-danger-fg);
+  font-size: 0.875rem;
   margin: 0.25rem 0;
 }
 
 .context-input__confirm-button,
 .context-input__retry-button {
   align-self: flex-start;
-  padding: 0.6rem 1.2rem;
+  padding: 0.625rem 1.25rem;
   border: none;
-  border-radius: 8px;
-  background-color: #2563eb;
-  color: #fff;
+  border-radius: var(--radius);
+  background-color: var(--color-accent);
+  color: var(--color-accent-fg);
   font-weight: 600;
+  font-size: 0.9375rem;
+  transition: background-color var(--transition);
+}
+
+.context-input__confirm-button:hover:not(:disabled),
+.context-input__retry-button:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+}
+
+.context-input__confirm-button:focus-visible,
+.context-input__retry-button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.context-input__processing,
+.context-input__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.context-input__success {
+  color: var(--color-success-fg);
 }
 
 .context-input__spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid #d0d4da;
-  border-top-color: #2563eb;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -81,5 +198,13 @@ button:disabled {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }

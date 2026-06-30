@@ -1,0 +1,41 @@
+.container {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background-color: var(--color-surface-subtle, #f1f5f9);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 999px;
+}
+
+.pill {
+  min-width: 34px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color var(--transition, 150ms), color var(--transition, 150ms);
+}
+
+.pill:hover {
+  color: var(--color-text, #0f172a);
+}
+
+.pill:focus-visible {
+  outline: none;
+  box-shadow: var(--ring, 0 0 0 3px rgba(37, 99, 235, 0.35));
+}
+
+/* Active language is shaded to signal it is the one in use. */
+.active {
+  color: #fff;
+  background-color: var(--color-accent, #2563eb);
+}
+
+.active:hover {
+  color: #fff;
+}

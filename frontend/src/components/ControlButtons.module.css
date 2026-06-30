@@ -4,7 +4,6 @@
   align-items: stretch;
   gap: 12px;
   width: 100%;
-  max-width: 480px;
 }
 
 .buttonRow {
@@ -14,24 +13,24 @@
 
 .acceptButton {
   flex: 1;
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 11px 20px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: #ffffff;
-  background-color: #16a34a;
+  color: var(--color-accent-fg);
+  background-color: var(--color-accent);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition: background-color var(--transition), opacity var(--transition);
 }
 
 .acceptButton:hover:not([aria-disabled="true"]) {
-  background-color: #15803d;
+  background-color: var(--color-accent-hover);
 }
 
 .acceptButton:focus-visible {
-  outline: 2px solid #16a34a;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .acceptButton[aria-disabled="true"] {
@@ -41,25 +40,27 @@
 
 .resetButton {
   flex: 1;
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 11px 20px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: #374151;
-  background-color: transparent;
-  border: 2px solid #d1d5db;
-  border-radius: 6px;
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, opacity 0.2s;
+  transition: border-color var(--transition), color var(--transition),
+    background-color var(--transition), opacity var(--transition);
 }
 
 .resetButton:hover:not([aria-disabled="true"]) {
-  border-color: #6b7280;
-  color: #111827;
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+  background-color: var(--color-surface-subtle);
 }
 
 .resetButton:focus-visible {
-  outline: 2px solid #6b7280;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .resetButton[aria-disabled="true"] {
@@ -68,10 +69,10 @@
 }
 
 .errorMessage {
-  font-size: 13px;
-  color: #dc2626;
+  font-size: 0.8125rem;
+  color: var(--color-danger-fg);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .loadingIndicator {

@@ -30,9 +30,11 @@ class WhisperTranscriptionService:
     """Transcribes audio using OpenAI Whisper API (whisper-1 model)."""
 
     MODEL = "whisper-1"
-    # Force Spanish so Whisper doesn't waste short clips auto-detecting (and
-    # sometimes guessing wrong), which produced poor/partial transcriptions.
-    LANGUAGE = "es"
+    # Default spoken language. We force a language (rather than let Whisper
+    # auto-detect) so short clips don't waste tokens guessing — and sometimes
+    # guessing wrong — which produced poor/partial transcriptions. The caller
+    # passes the user's selected UI language (es/en) per request.
+    DEFAULT_LANGUAGE = "es"
     MAX_RETRIES = 2
     BACKOFF_DELAYS = [1, 3]  # seconds for retry 1 and retry 2
 
@@ -78,12 +80,16 @@ class WhisperTranscriptionService:
             return "no speech" in error_message or "no speech" in body_str
         return False
 
-    async def transcribe(self, audio_file: bytes, mime_type: str) -> str:
+    async def transcribe(
+        self, audio_file: bytes, mime_type: str, language: str | None = None
+    ) -> str:
         """Send audio to Whisper API and return the transcribed text.
 
         Args:
             audio_file: The raw audio bytes.
             mime_type: The MIME type of the audio (e.g., "audio/webm").
+            language: ISO-639-1 code of the expected spoken language (e.g. "es",
+                "en"). Defaults to ``DEFAULT_LANGUAGE`` when not provided.
 
         Returns:
             The transcribed text string.
@@ -94,6 +100,7 @@ class WhisperTranscriptionService:
             WhisperNoSpeechError: If no speech is detected in the audio.
         """
         filename = self._get_filename(mime_type)
+        language = language or self.DEFAULT_LANGUAGE
         last_error: Exception | None = None
 
         for attempt in range(1 + self.MAX_RETRIES):
@@ -104,7 +111,7 @@ class WhisperTranscriptionService:
                 transcription = await self._client.audio.transcriptions.create(
                     model=self.MODEL,
                     file=(filename, file_obj, mime_type),
-                    language=self.LANGUAGE,
+                    language=language,
                     temperature=0,
                 )
 

@@ -1,3 +1,5 @@
+import { localized } from '../i18n/LanguageContext';
+
 /**
  * Represents a single column definition extracted from the Excel template.
  * Maps to the schema detected from rows 1-3 of the uploaded file.
@@ -95,7 +97,8 @@ export class TemplateApiError extends Error {
 }
 
 /**
- * Maps backend error responses to user-friendly messages in Spanish.
+ * Maps backend error responses to user-friendly messages in the active UI
+ * language (Spanish or English).
  */
 function mapErrorToUserMessage(
   statusCode: number,
@@ -104,43 +107,91 @@ function mapErrorToUserMessage(
 ): string {
   switch (errorCode) {
     case 'INVALID_EXTENSION':
-      return 'El archivo seleccionado no es compatible. Solo se aceptan archivos .xlsx.';
+      return localized(
+        'El archivo seleccionado no es compatible. Solo se aceptan archivos .xlsx.',
+        'The selected file is not supported. Only .xlsx files are accepted.'
+      );
     case 'TOO_MANY_COLUMNS':
-      return 'El archivo supera el límite de 8 columnas permitido en esta versión.';
+      return localized(
+        'El archivo supera el límite de 8 columnas permitido en esta versión.',
+        'The file exceeds the 8-column limit allowed in this version.'
+      );
     case 'EMPTY_HEADER_ROW':
-      return 'No se encontraron nombres de columna en la primera fila del archivo.';
+      return localized(
+        'No se encontraron nombres de columna en la primera fila del archivo.',
+        'No column names were found in the first row of the file.'
+      );
     case 'MISSING_DATA_TYPES':
-      return 'Faltan los tipos de dato en la fila 2 para algunas columnas.';
+      return localized(
+        'Faltan los tipos de dato en la fila 2 para algunas columnas.',
+        'Data types are missing in row 2 for some columns.'
+      );
     case 'MISSING_EXAMPLES':
-      return 'Faltan los ejemplos de valor en la fila 3 para algunas columnas.';
+      return localized(
+        'Faltan los ejemplos de valor en la fila 3 para algunas columnas.',
+        'Example values are missing in row 3 for some columns.'
+      );
     case 'UNREADABLE_FILE':
-      return 'El archivo está corrupto o no se puede leer. Intente con otro archivo.';
+      return localized(
+        'El archivo está corrupto o no se puede leer. Intente con otro archivo.',
+        'The file is corrupt or cannot be read. Try a different file.'
+      );
     case 'CONTEXT_TOO_SHORT':
-      return 'La descripción es demasiado corta. Escriba al menos 50 caracteres.';
+      return localized(
+        'La descripción es demasiado corta. Escriba al menos 50 caracteres.',
+        'The description is too short. Write at least 50 characters.'
+      );
     case 'CONTEXT_TOO_LONG':
-      return 'La descripción supera el límite de 3000 caracteres.';
+      return localized(
+        'La descripción supera el límite de 3000 caracteres.',
+        'The description exceeds the 3000-character limit.'
+      );
     case 'LLM_UNAVAILABLE':
-      return 'El servicio de procesamiento no está disponible en este momento. Intente de nuevo.';
+      return localized(
+        'El servicio de procesamiento no está disponible en este momento. Intente de nuevo.',
+        'The processing service is unavailable right now. Please try again.'
+      );
     case 'LLM_INVALID_RESPONSE':
-      return 'Error al procesar el contexto. Intente de nuevo.';
+      return localized(
+        'Error al procesar el contexto. Intente de nuevo.',
+        'Error processing the context. Please try again.'
+      );
     case 'SESSION_NOT_FOUND':
-      return 'La sesión no fue encontrada. Puede que haya expirado.';
+      return localized(
+        'La sesión no fue encontrada. Puede que haya expirado.',
+        'The session was not found. It may have expired.'
+      );
     case 'DATABASE_ERROR':
-      return 'Error interno del servidor. Intente de nuevo más tarde.';
+      return localized(
+        'Error interno del servidor. Intente de nuevo más tarde.',
+        'Internal server error. Please try again later.'
+      );
     default:
       break;
   }
 
   // Fallback based on status code ranges
   if (statusCode === 422) {
-    return detail || 'Error de validación. Revise los datos ingresados.';
+    return detail || localized(
+      'Error de validación. Revise los datos ingresados.',
+      'Validation error. Check the entered data.'
+    );
   }
   if (statusCode === 404) {
-    return 'El recurso solicitado no fue encontrado.';
+    return localized(
+      'El recurso solicitado no fue encontrado.',
+      'The requested resource was not found.'
+    );
   }
   if (statusCode >= 500) {
-    return 'Error del servidor. Intente de nuevo más tarde.';
+    return localized(
+      'Error del servidor. Intente de nuevo más tarde.',
+      'Server error. Please try again later.'
+    );
   }
 
-  return detail || 'Ha ocurrido un error inesperado.';
+  return detail || localized(
+    'Ha ocurrido un error inesperado.',
+    'An unexpected error occurred.'
+  );
 }

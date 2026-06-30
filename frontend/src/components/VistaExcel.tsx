@@ -1,5 +1,6 @@
 import type { ColumnDef } from '../types/template';
 import type { ExtractionRecord } from '../types/extraction';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './VistaExcel.module.css';
 
 export interface VistaExcelProps {
@@ -23,20 +24,21 @@ export interface VistaExcelProps {
  * Validates: Requirements 3.1, 3.2, 3.3, 3.4
  */
 export function VistaExcel({ columns, records, isLoading }: VistaExcelProps) {
+  const { t } = useI18n();
   // During loading, the view remains unchanged (requirement 3.2).
   // aria-busy communicates the processing state to assistive technologies.
 
   if (records.length === 0) {
     return (
       <div className={styles.container} aria-busy={isLoading}>
-        <p className={styles.emptyMessage}>No hay registros aún.</p>
+        <p className={styles.emptyMessage}>{t('vista.empty')}</p>
       </div>
     );
   }
 
   return (
     <div className={styles.container} aria-busy={isLoading}>
-      <table className={styles.table} aria-label="Registros del archivo Excel">
+      <table className={styles.table} aria-label={t('vista.ariaTable')}>
         <thead>
           <tr>
             {columns.map((col) => (

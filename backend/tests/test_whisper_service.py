@@ -83,6 +83,18 @@ class TestWhisperTranscriptionServiceTranscribe:
         assert call_kwargs["language"] == "es"
 
     @pytest.mark.asyncio
+    async def test_transcribe_uses_provided_language(self, service, mock_client, sample_audio):
+        """Test that transcribe() forwards the requested language to the API."""
+        mock_client.audio.transcriptions.create = AsyncMock(
+            return_value=_make_transcription_response("text")
+        )
+
+        await service.transcribe(sample_audio, "audio/webm", "en")
+
+        call_kwargs = mock_client.audio.transcriptions.create.call_args.kwargs
+        assert call_kwargs["language"] == "en"
+
+    @pytest.mark.asyncio
     async def test_transcribe_sends_correct_mime_type(self, service, mock_client, sample_audio):
         """Test that transcribe() sends the file with correct MIME type."""
         mock_client.audio.transcriptions.create = AsyncMock(

@@ -80,6 +80,18 @@ describe('AudioRecorder', () => {
     expect(mockGetUserMedia).toHaveBeenCalledWith({ audio: true });
   });
 
+  it('calls onRecordingStart when a recording begins', async () => {
+    const onRecordingStart = vi.fn();
+    render(<AudioRecorder {...defaultProps} onRecordingStart={onRecordingStart} />);
+    const button = screen.getByRole('button', { name: /iniciar grabación/i });
+
+    await act(async () => {
+      fireEvent.click(button);
+    });
+
+    expect(onRecordingStart).toHaveBeenCalledTimes(1);
+  });
+
   it('shows "Detener" button while recording', async () => {
     render(<AudioRecorder {...defaultProps} />);
     const button = screen.getByRole('button', { name: /iniciar grabación/i });

@@ -1,3 +1,5 @@
+import { IconCheck } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './ExtractionStatus.module.css';
 
 export type ExtractionState = 'idle' | 'processing' | 'success' | 'error';
@@ -29,6 +31,8 @@ export function ExtractionStatus({
   errorMessage,
   onRetry,
 }: ExtractionStatusProps) {
+  const { t } = useI18n();
+
   if (state === 'idle') {
     return null;
   }
@@ -39,10 +43,10 @@ export function ExtractionStatus({
         <div
           className={`${styles.statusMessage} ${styles.processing}`}
           role="status"
-          aria-label="Procesando extracción"
+          aria-label={t('extraction.ariaProcessing')}
         >
           <div className={styles.spinner} aria-hidden="true" />
-          <span>Procesando extracción...</span>
+          <span>{t('extraction.processing')}</span>
         </div>
       </div>
     );
@@ -54,9 +58,10 @@ export function ExtractionStatus({
         <div
           className={`${styles.statusMessage} ${styles.success}`}
           role="status"
-          aria-label="Extracción exitosa"
+          aria-label={t('extraction.ariaSuccess')}
         >
-          <span>✓ Registro insertado en fila {rowNumber}</span>
+          <IconCheck aria-hidden="true" />
+          <span>{t('extraction.success', { row: rowNumber ?? '' })}</span>
         </div>
       </div>
     );
@@ -69,15 +74,15 @@ export function ExtractionStatus({
         className={`${styles.statusMessage} ${styles.error}`}
         role="alert"
       >
-        <span>{errorMessage || 'Ha ocurrido un error inesperado.'}</span>
+        <span>{errorMessage || t('common.unexpectedError')}</span>
         {onRetry && (
           <button
             type="button"
             className={styles.retryButton}
             onClick={onRetry}
-            aria-label="Reintentar extracción"
+            aria-label={t('extraction.ariaRetry')}
           >
-            Reintentar
+            {t('common.retry')}
           </button>
         )}
       </div>

@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { IconMic, IconStop, IconHeadphones, IconAlert } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './AudioRecorder.module.css';
 
 export interface AudioRecorderProps {
@@ -6,6 +8,8 @@ export interface AudioRecorderProps {
   onRecordingComplete: (audioBlob: Blob, duration: number, mimeType: string) => void;
   /** Called when an error occurs */
   onError: (error: string) => void;
+  /** Called when a new recording starts (e.g. to clear previously shown text) */
+  onRecordingStart?: () => void;
   /** Disable the recorder (e.g. during LLM processing) */
   isDisabled?: boolean;
   /** External status override */
@@ -87,10 +91,12 @@ function getActiveInputLabel(stream: MediaStream): string {
 export function AudioRecorder({
   onRecordingComplete,
   onError,
+  onRecordingStart,
   isDisabled = false,
   status: externalStatus,
   maxDurationSeconds = DEFAULT_MAX_DURATION_SECONDS,
 }: AudioRecorderProps) {
+  const { t } = useI18n();
   const [internalStatus, setInternalStatus] = useState<RecorderStatus>('idle');
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -150,8 +156,7 @@ export function AudioRecorder({
         );
 
         if (elapsedSeconds < MIN_DURATION_SECONDS) {
-          const errorMsg =
-            'El audio es demasiado corto (mínimo 1 segundo)';
+          const errorMsg = t('recorder.tooShort');
           setError(errorMsg);
           setInternalStatus('error');
           onError(errorMsg);
@@ -169,7 +174,7 @@ export function AudioRecorder({
         onRecordingComplete(blob, elapsedSeconds, mimeType);
       };
     },
-    [onRecordingComplete, onError, stopTimer, stopMediaStream]
+    [onRecordingComplete, onError, stopTimer, stopMediaStream, t]
   );
 
   const startRecording = useCallback(async () => {
@@ -203,6 +208,8 @@ export function AudioRecorder({
       setInternalStatus('recording');
       setDuration(0);
       startTimer();
+      // Signal the start so the parent can clear any previously shown text.
+      onRecordingStart?.();
     } catch (err: unknown) {
       let errorMsg: string;
 
@@ -211,20 +218,19 @@ export function AudioRecorder({
           err.name === 'NotAllowedError' ||
           err.name === 'PermissionDeniedError'
         ) {
-          errorMsg =
-            'Se requiere acceso al micrófono para usar esta funcionalidad.';
+          errorMsg = t('recorder.permissionDenied');
         } else {
-          errorMsg = 'No se pudo acceder al dispositivo de audio.';
+          errorMsg = t('recorder.deviceError');
         }
       } else {
-        errorMsg = 'No se pudo acceder al dispositivo de audio.';
+        errorMsg = t('recorder.deviceError');
       }
 
       setError(errorMsg);
       setInternalStatus('error');
       onError(errorMsg);
     }
-  }, [handleStop, startTimer, onError]);
+  }, [handleStop, startTimer, onError, onRecordingStart, t]);
 
   const stopRecording = useCallback(() => {
     if (
@@ -253,22 +259,22 @@ export function AudioRecorder({
   const getButtonLabel = (): string => {
     switch (status) {
       case 'recording':
-        return 'Detener';
+        return t('recorder.stop');
       case 'processing':
         return '';
       default:
-        return 'Grabar';
+        return t('recorder.record');
     }
   };
 
   const getAriaLabel = (): string => {
     switch (status) {
       case 'recording':
-        return 'Detener grabación';
+        return t('recorder.ariaStop');
       case 'processing':
-        return 'Procesando audio';
+        return t('recorder.ariaProcessing');
       default:
-        return 'Iniciar grabación de audio';
+        return t('recorder.ariaStart');
     }
   };
 
@@ -293,7 +299,14 @@ export function AudioRecorder({
         {status === 'processing' ? (
           <span className={styles.spinner} aria-hidden="true" />
         ) : (
-          getButtonLabel()
+          <>
+            {status === 'recording' ? (
+              <IconStop aria-hidden="true" />
+            ) : (
+              <IconMic aria-hidden="true" />
+            )}
+            {getButtonLabel()}
+          </>
         )}
       </button>
 
@@ -304,7 +317,7 @@ export function AudioRecorder({
             className={styles.timer}
             role="timer"
             aria-live="polite"
-            aria-label={`Tiempo de grabación: ${formatTime(duration)}`}
+            aria-label={t('recorder.ariaTimer', { time: formatTime(duration) })}
           >
             {formatTime(duration)}
           </span>
@@ -314,21 +327,16 @@ export function AudioRecorder({
       {isBluetoothInput && (
         <div className={styles.warningContainer} role="status" aria-live="polite">
           <span className={styles.warningIcon} aria-hidden="true">
-            🎧
+            <IconHeadphones />
           </span>
-          <p className={styles.warningMessage}>
-            Estás usando un micrófono Bluetooth. Por limitaciones del Bluetooth, su
-            calidad de captura es baja y la transcripción puede salir incompleta.
-            Para mejor precisión, usa el micrófono del dispositivo o uno por
-            cable/USB.
-          </p>
+          <p className={styles.warningMessage}>{t('recorder.bluetoothWarning')}</p>
         </div>
       )}
 
       {status === 'error' && error && (
         <div className={styles.errorContainer} role="alert" aria-live="assertive">
           <span className={styles.errorIcon} aria-hidden="true">
-            ⚠️
+            <IconAlert />
           </span>
           <p className={styles.errorMessage}>{error}</p>
         </div>

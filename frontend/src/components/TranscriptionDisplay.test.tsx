@@ -73,6 +73,30 @@ describe('TranscriptionDisplay', () => {
     expect(textarea).toHaveAttribute('rows', '4');
   });
 
+  it('renders the verification notice when provided', () => {
+    render(
+      <TranscriptionDisplay
+        {...defaultProps}
+        text="Lo que dije"
+        notice="✓ Esta narración se agregó a la fila 2."
+      />
+    );
+    expect(screen.getByText('✓ Esta narración se agregó a la fila 2.')).toBeInTheDocument();
+  });
+
+  it('does not render a notice when none is provided', () => {
+    render(<TranscriptionDisplay {...defaultProps} text="Lo que dije" />);
+    // The textarea has its own aria-label; no extra status note should appear.
+    expect(screen.queryByText(/se agregó a la fila/i)).not.toBeInTheDocument();
+  });
+
+  it('hides the notice while loading', () => {
+    render(
+      <TranscriptionDisplay {...defaultProps} isLoading={true} notice="No debería verse" />
+    );
+    expect(screen.queryByText('No debería verse')).not.toBeInTheDocument();
+  });
+
   it('clears text when parent passes empty string (error/reset scenario)', () => {
     const { rerender } = render(
       <TranscriptionDisplay {...defaultProps} text="Texto transcrito previo" />

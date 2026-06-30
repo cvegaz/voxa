@@ -80,6 +80,32 @@ describe('ControlButtons', () => {
     );
   });
 
+  it('"Aceptar" is aria-disabled when the text was already accepted', () => {
+    render(<ControlButtons {...defaultProps} isAccepted={true} />);
+
+    expect(screen.getByRole('button', { name: /aceptar/i })).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+  });
+
+  it('does not call onAccept when the text was already accepted', () => {
+    const onAccept = vi.fn();
+    render(<ControlButtons {...defaultProps} isAccepted={true} onAccept={onAccept} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /aceptar/i }));
+    expect(onAccept).not.toHaveBeenCalled();
+  });
+
+  it('"Agregar nuevo" stays enabled when the text was already accepted', () => {
+    render(<ControlButtons {...defaultProps} isAccepted={true} />);
+
+    expect(screen.getByRole('button', { name: /agregar nuevo/i })).toHaveAttribute(
+      'aria-disabled',
+      'false'
+    );
+  });
+
   it('does not call onAccept when the session is finalized', () => {
     const onAccept = vi.fn();
     render(<ControlButtons {...defaultProps} isFinalized={true} onAccept={onAccept} />);

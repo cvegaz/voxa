@@ -13,6 +13,8 @@ import { TranscriptionApiError } from '../types/transcription';
 import { ExtractionApiError } from '../types/extraction';
 import type { ExtractionRecord } from '../types/extraction';
 import type { ColumnDef } from '../types/template';
+import { IconAlert } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './TranscriptionPage.module.css';
 
 type RecorderStatus = 'idle' | 'recording' | 'processing' | 'error';
@@ -21,6 +23,10 @@ interface TranscriptionPageState {
   recorderStatus: RecorderStatus;
   transcriptionId: string | null;
   transcribedText: string;
+  // True when the shown text is an already-accepted entry kept on screen so the
+  // narrator can verify it against the new row. Cleared on a new recording or
+  // "Agregar nuevo".
+  isAccepted: boolean;
   isTranscribing: boolean;
   isLLMProcessing: boolean;
   hasConfirmedSchema: boolean;
@@ -41,6 +47,7 @@ const initialState: TranscriptionPageState = {
   recorderStatus: 'idle',
   transcriptionId: null,
   transcribedText: '',
+  isAccepted: false,
   isTranscribing: false,
   isLLMProcessing: false,
   hasConfirmedSchema: false,
@@ -71,6 +78,7 @@ const initialState: TranscriptionPageState = {
  * Validates: Requirements 1.5, 2.2, 3.3, 3.6, 3.7, 3.8
  */
 export function TranscriptionPage() {
+  const { t, lang } = useI18n();
   const [state, setState] = useState<TranscriptionPageState>(initialState);
 
   // Check for confirmed schema on mount, store sessionId and columns, fetch records
@@ -129,11 +137,12 @@ export function TranscriptionPage() {
       }));
 
       try {
-        const response = await transcriptionApi.transcribeAudio(audioBlob, duration);
+        const response = await transcriptionApi.transcribeAudio(audioBlob, duration, lang);
         setState((prev) => ({
           ...prev,
           transcribedText: response.text,
           transcriptionId: response.transcriptionId,
+          isAccepted: false,
           isTranscribing: false,
           recorderStatus: 'idle',
         }));
@@ -141,7 +150,7 @@ export function TranscriptionPage() {
         const errorMessage =
           err instanceof TranscriptionApiError
             ? err.userMessage
-            : 'Error al transcribir el audio. Intente de nuevo.';
+            : t('page.errTranscribe');
 
         // On error: clear text, reset recorder to idle (req 2.6, 3.8)
         setState((prev) => ({
@@ -154,7 +163,7 @@ export function TranscriptionPage() {
         }));
       }
     },
-    []
+    [lang, t]
   );
 
   /**
@@ -166,6 +175,24 @@ export function TranscriptionPage() {
       ...prev,
       error: errorMsg,
       recorderStatus: 'idle',
+    }));
+  }, []);
+
+  /**
+   * Called the moment a new recording starts. Clears any text kept on screen
+   * (an accepted entry shown for verification, or a prior un-accepted draft) and
+   * the previous extraction banner, so pressing "Grabar" blanks the view.
+   */
+  const handleRecordingStart = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      transcribedText: '',
+      transcriptionId: null,
+      isAccepted: false,
+      error: null,
+      extractionState: 'idle',
+      extractionRowNumber: undefined,
+      extractionError: undefined,
     }));
   }, []);
 
@@ -194,7 +221,7 @@ export function TranscriptionPage() {
       const errorMessage =
         err instanceof TranscriptionApiError
           ? err.userMessage
-          : 'Error al procesar la transcripción. Intente de nuevo.';
+          : t('page.errAccept');
 
       setState((prev) => ({
         ...prev,
@@ -213,7 +240,9 @@ export function TranscriptionPage() {
         state.transcribedText
       );
 
-      // On extraction success: refresh records, show success, clear text
+      // On extraction success: refresh records and show success. Keep the
+      // transcribed text on screen (read-only) so the narrator can verify it
+      // against the new row; it clears on the next recording or "Agregar nuevo".
       const recordsResponse = await extractionApi.getRecords(state.sessionId);
 
       setState((prev) => ({
@@ -225,14 +254,14 @@ export function TranscriptionPage() {
         records: recordsResponse.records,
         maxRows: recordsResponse.maxRows,
         finalized: recordsResponse.finalized,
-        transcribedText: '',
+        isAccepted: true,
         transcriptionId: null,
       }));
     } catch (err: unknown) {
       const errorMessage =
         err instanceof ExtractionApiError
           ? err.userMessage
-          : 'Error al extraer datos. Intente de nuevo.';
+          : t('page.errExtract');
 
       // On extraction error: preserve transcribed text, show error
       setState((prev) => ({
@@ -243,7 +272,7 @@ export function TranscriptionPage() {
         // Text and transcriptionId are preserved for retry
       }));
     }
-  }, [state.transcriptionId, state.transcribedText, state.sessionId]);
+  }, [state.transcriptionId, state.transcribedText, state.sessionId, t]);
 
   /**
    * Called when the user presses "Reintentar" on the ExtractionStatus error.
@@ -266,7 +295,8 @@ export function TranscriptionPage() {
         state.transcribedText
       );
 
-      // On extraction success: refresh records, show success, clear text
+      // On extraction success: refresh records, show success, and keep the text
+      // on screen (read-only) for verification — same as handleAccept.
       const recordsResponse = await extractionApi.getRecords(state.sessionId);
 
       setState((prev) => ({
@@ -278,14 +308,14 @@ export function TranscriptionPage() {
         records: recordsResponse.records,
         maxRows: recordsResponse.maxRows,
         finalized: recordsResponse.finalized,
-        transcribedText: '',
+        isAccepted: true,
         transcriptionId: null,
       }));
     } catch (err: unknown) {
       const errorMessage =
         err instanceof ExtractionApiError
           ? err.userMessage
-          : 'Error al extraer datos. Intente de nuevo.';
+          : t('page.errExtract');
 
       setState((prev) => ({
         ...prev,
@@ -294,7 +324,7 @@ export function TranscriptionPage() {
         extractionError: errorMessage,
       }));
     }
-  }, [state.sessionId, state.transcribedText]);
+  }, [state.sessionId, state.transcribedText, t]);
 
   /**
    * Called when the user presses "Agregar nuevo".
@@ -314,6 +344,7 @@ export function TranscriptionPage() {
       ...prev,
       transcribedText: '',
       transcriptionId: null,
+      isAccepted: false,
       error: null,
       recorderStatus: 'idle',
       // hasConfirmedSchema is preserved (req 3.6)
@@ -344,10 +375,10 @@ export function TranscriptionPage() {
       const errorMessage =
         err instanceof ExtractionApiError
           ? err.userMessage
-          : 'Error al descargar el archivo. Intente de nuevo.';
+          : t('page.errDownload');
       setState((prev) => ({ ...prev, isClosing: false, error: errorMessage }));
     }
-  }, [state.sessionId]);
+  }, [state.sessionId, t]);
 
   /**
    * Called when the user presses "Finalizar y descargar".
@@ -366,16 +397,18 @@ export function TranscriptionPage() {
       const errorMessage =
         err instanceof ExtractionApiError
           ? err.userMessage
-          : 'Error al finalizar la sesión. Intente de nuevo.';
+          : t('page.errFinalize');
       setState((prev) => ({ ...prev, isClosing: false, error: errorMessage }));
     }
-  }, [state.sessionId, handleDownload]);
+  }, [state.sessionId, handleDownload, t]);
 
   return (
     <div className={styles.container}>
       {state.error && (
         <div className={styles.errorBanner} role="alert" aria-live="assertive">
-          <span className={styles.errorIcon} aria-hidden="true">⚠️</span>
+          <span className={styles.errorIcon} aria-hidden="true">
+            <IconAlert />
+          </span>
           <p className={styles.errorText}>{state.error}</p>
         </div>
       )}
@@ -383,6 +416,7 @@ export function TranscriptionPage() {
       <AudioRecorder
         onRecordingComplete={handleRecordingComplete}
         onError={handleRecorderError}
+        onRecordingStart={handleRecordingStart}
         isDisabled={state.isLLMProcessing || state.finalized}
         status={state.recorderStatus}
       />
@@ -390,8 +424,13 @@ export function TranscriptionPage() {
       <TranscriptionDisplay
         text={state.transcribedText}
         isLoading={state.isTranscribing}
-        isDisabled={state.isLLMProcessing || state.finalized}
+        isDisabled={state.isLLMProcessing || state.finalized || state.isAccepted}
         onChange={handleTextChange}
+        notice={
+          state.isAccepted
+            ? t('display.acceptedNotice', { row: state.extractionRowNumber ?? '' })
+            : undefined
+        }
       />
 
       <ControlButtons
@@ -399,6 +438,7 @@ export function TranscriptionPage() {
         hasConfirmedSchema={state.hasConfirmedSchema}
         isLLMProcessing={state.isLLMProcessing}
         isFinalized={state.finalized}
+        isAccepted={state.isAccepted}
         onAccept={handleAccept}
         onReset={handleReset}
       />

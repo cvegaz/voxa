@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './ControlButtons.module.css';
 
 export interface ControlButtonsProps {
@@ -10,6 +11,9 @@ export interface ControlButtonsProps {
   isLLMProcessing: boolean;
   /** Whether the session is finalized (closed); disables capture controls */
   isFinalized?: boolean;
+  /** Whether the shown text was already accepted (kept on screen for verification);
+   * disables "Aceptar" so the same narration is not submitted twice. */
+  isAccepted?: boolean;
   /** Callback when the user accepts the transcription */
   onAccept: () => void;
   /** Callback when the user wants to reset and start a new recording */
@@ -25,24 +29,27 @@ export function ControlButtons({
   hasConfirmedSchema,
   isLLMProcessing,
   isFinalized = false,
+  isAccepted = false,
   onAccept,
   onReset,
 }: ControlButtonsProps) {
+  const { t } = useI18n();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const hasText = transcribedText.trim().length > 0;
-  const isAcceptEnabled = hasText && hasConfirmedSchema && !isLLMProcessing && !isFinalized;
+  const isAcceptEnabled =
+    hasText && hasConfirmedSchema && !isLLMProcessing && !isFinalized && !isAccepted;
 
   const handleAccept = () => {
-    if (isLLMProcessing || isFinalized) return;
+    if (isLLMProcessing || isFinalized || isAccepted) return;
 
     if (!hasText) {
-      setErrorMessage('Primero debe grabar y transcribir un audio.');
+      setErrorMessage(t('controls.errNoText'));
       return;
     }
 
     if (!hasConfirmedSchema) {
-      setErrorMessage('Primero debe cargar y confirmar un archivo Excel.');
+      setErrorMessage(t('controls.errNoSchema'));
       return;
     }
 
@@ -64,9 +71,9 @@ export function ControlButtons({
           className={styles.acceptButton}
           aria-disabled={!isAcceptEnabled}
           onClick={handleAccept}
-          aria-label="Aceptar texto transcrito y enviar para procesamiento"
+          aria-label={t('controls.ariaAccept')}
         >
-          Aceptar
+          {t('controls.accept')}
           {isLLMProcessing && <span className={styles.loadingIndicator} aria-hidden="true" />}
         </button>
         <button
@@ -74,9 +81,9 @@ export function ControlButtons({
           className={styles.resetButton}
           aria-disabled={isLLMProcessing || isFinalized}
           onClick={handleReset}
-          aria-label="Agregar nuevo audio descartando el texto actual"
+          aria-label={t('controls.ariaAddNew')}
         >
-          Agregar nuevo
+          {t('controls.addNew')}
         </button>
       </div>
       {errorMessage && (

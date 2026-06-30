@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import type { UploadResponse } from '../types/template';
 import { TemplateApiError } from '../types/template';
 import { templateApi } from '../services/templateApi';
+import { IconUpload, IconAlert } from './Icons';
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './FileUpload.module.css';
 
 type UploadState = 'idle' | 'uploading' | 'error';
@@ -21,6 +23,7 @@ export interface FileUploadProps {
  * - error: shows the error message with a retry button
  */
 export function FileUpload({ onUploadSuccess }: FileUploadProps) {
+  const { t } = useI18n();
   const [state, setState] = useState<UploadState>('idle');
   const [isDragOver, setIsDragOver] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -39,29 +42,25 @@ export function FileUpload({ onUploadSuccess }: FileUploadProps) {
         if (error instanceof TemplateApiError) {
           setErrorMessage(error.userMessage);
         } else {
-          setErrorMessage(
-            'Ha ocurrido un error inesperado. Intente de nuevo.'
-          );
+          setErrorMessage(t('common.unexpectedError'));
         }
         setState('error');
       }
     },
-    [onUploadSuccess]
+    [onUploadSuccess, t]
   );
 
   const validateAndUpload = useCallback(
     (file: File) => {
       // Client-side extension check for immediate feedback
       if (!file.name.toLowerCase().endsWith('.xlsx')) {
-        setErrorMessage(
-          'El archivo seleccionado no es compatible. Solo se aceptan archivos .xlsx.'
-        );
+        setErrorMessage(t('upload.invalidExtension'));
         setState('error');
         return;
       }
       handleUpload(file);
     },
-    [handleUpload]
+    [handleUpload, t]
   );
 
   const handleFileChange = useCallback(
@@ -135,10 +134,10 @@ export function FileUpload({ onUploadSuccess }: FileUploadProps) {
         <div
           className={styles.uploading}
           role="status"
-          aria-label="Subiendo archivo"
+          aria-label={t('upload.ariaUploading')}
         >
           <div className={styles.spinner} aria-hidden="true" />
-          <p className={styles.uploadingText}>Procesando archivo…</p>
+          <p className={styles.uploadingText}>{t('upload.processing')}</p>
         </div>
       </div>
     );
@@ -153,16 +152,16 @@ export function FileUpload({ onUploadSuccess }: FileUploadProps) {
           aria-live="assertive"
         >
           <span className={styles.errorIcon} aria-hidden="true">
-            ⚠️
+            <IconAlert size={32} />
           </span>
           <p className={styles.errorMessage}>{errorMessage}</p>
           <button
             type="button"
             className={styles.retryButton}
             onClick={handleRetry}
-            aria-label="Reintentar carga de archivo"
+            aria-label={t('upload.ariaRetry')}
           >
-            Reintentar
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -188,16 +187,16 @@ export function FileUpload({ onUploadSuccess }: FileUploadProps) {
         onKeyDown={handleKeyDown}
         role="button"
         tabIndex={0}
-        aria-label="Zona de carga de archivos. Haga clic o arrastre un archivo .xlsx aquí."
+        aria-label={t('upload.ariaDropzone')}
       >
         <span className={styles.icon} aria-hidden="true">
-          📄
+          <IconUpload size={28} />
         </span>
         <p className={styles.label}>
-          Arrastre un archivo aquí o{' '}
-          <span className={styles.labelHighlight}>haga clic para seleccionar</span>
+          {t('upload.dropPrefix')}
+          <span className={styles.labelHighlight}>{t('upload.dropHighlight')}</span>
         </p>
-        <p className={styles.hint}>Solo archivos .xlsx (máximo 8 columnas)</p>
+        <p className={styles.hint}>{t('upload.hint')}</p>
       </div>
 
       <input

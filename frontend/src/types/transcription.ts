@@ -1,3 +1,5 @@
+import { localized } from '../i18n/LanguageContext';
+
 /**
  * Response returned by POST /api/transcriptions/transcribe on successful transcription.
  */
@@ -92,7 +94,8 @@ export class TranscriptionApiError extends Error {
 }
 
 /**
- * Maps backend error responses to user-friendly messages in Spanish.
+ * Maps backend error responses to user-friendly messages in the active UI
+ * language (Spanish or English).
  */
 function mapTranscriptionErrorToUserMessage(
   statusCode: number,
@@ -101,41 +104,80 @@ function mapTranscriptionErrorToUserMessage(
 ): string {
   switch (errorCode) {
     case 'AUDIO_TOO_SHORT':
-      return 'El audio es demasiado corto. Grabe al menos 1 segundo.';
+      return localized(
+        'El audio es demasiado corto. Grabe al menos 1 segundo.',
+        'The audio is too short. Record at least 1 second.'
+      );
     case 'AUDIO_TOO_LONG':
-      return 'El audio es demasiado largo. Máximo 30 segundos.';
+      return localized(
+        'El audio es demasiado largo. Máximo 20 segundos.',
+        'The audio is too long. Maximum 20 seconds.'
+      );
     case 'UNSUPPORTED_AUDIO_FORMAT':
-      return 'El formato de audio no es compatible.';
+      return localized(
+        'El formato de audio no es compatible.',
+        'The audio format is not supported.'
+      );
     case 'EMPTY_AUDIO_FILE':
-      return 'El archivo de audio está vacío.';
+      return localized('El archivo de audio está vacío.', 'The audio file is empty.');
     case 'WHISPER_UNAVAILABLE':
-      return 'El servicio de transcripción no está disponible. Intente de nuevo.';
+      return localized(
+        'El servicio de transcripción no está disponible. Intente de nuevo.',
+        'The transcription service is unavailable. Please try again.'
+      );
     case 'WHISPER_EMPTY_RESPONSE':
-      return 'No se pudo transcribir el audio. Intente grabar de nuevo.';
+      return localized(
+        'No se pudo transcribir el audio. Intente grabar de nuevo.',
+        'The audio could not be transcribed. Try recording again.'
+      );
     case 'WHISPER_NO_SPEECH':
-      return 'No se detectó habla en el audio. Intente grabar de nuevo.';
+      return localized(
+        'No se detectó habla en el audio. Intente grabar de nuevo.',
+        'No speech was detected in the audio. Try recording again.'
+      );
     case 'EMPTY_TRANSCRIPTION':
-      return 'El texto no puede estar vacío.';
+      return localized('El texto no puede estar vacío.', 'The text cannot be empty.');
     case 'NO_CONFIRMED_SCHEMA':
-      return 'Primero debe cargar y confirmar un archivo Excel.';
+      return localized(
+        'Primero debe cargar y confirmar un archivo Excel.',
+        'You must upload and confirm an Excel file first.'
+      );
     case 'SESSION_NOT_FOUND':
-      return 'La sesión de transcripción no fue encontrada.';
+      return localized(
+        'La sesión de transcripción no fue encontrada.',
+        'The transcription session was not found.'
+      );
     case 'DATABASE_ERROR':
-      return 'Error interno del servidor. Intente de nuevo más tarde.';
+      return localized(
+        'Error interno del servidor. Intente de nuevo más tarde.',
+        'Internal server error. Please try again later.'
+      );
     default:
       break;
   }
 
   // Fallback based on status code ranges
   if (statusCode === 422) {
-    return detail || 'Error de validación. Revise los datos ingresados.';
+    return detail || localized(
+      'Error de validación. Revise los datos ingresados.',
+      'Validation error. Check the entered data.'
+    );
   }
   if (statusCode === 404) {
-    return 'El recurso solicitado no fue encontrado.';
+    return localized(
+      'El recurso solicitado no fue encontrado.',
+      'The requested resource was not found.'
+    );
   }
   if (statusCode >= 500) {
-    return 'Error del servidor. Intente de nuevo más tarde.';
+    return localized(
+      'Error del servidor. Intente de nuevo más tarde.',
+      'Server error. Please try again later.'
+    );
   }
 
-  return detail || 'Ha ocurrido un error inesperado.';
+  return detail || localized(
+    'Ha ocurrido un error inesperado.',
+    'An unexpected error occurred.'
+  );
 }

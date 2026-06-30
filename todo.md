@@ -32,16 +32,18 @@
 - Remove the dependency on an external API and its associated costs
 - Evaluate extraction quality with local models vs. OpenAI
 
-### 7. Bilingual frontend (Spanish + English)
-- Make the app run with the user-facing frontend available in both Spanish and English
-- Add i18n so all UI strings, button labels, and error messages can be switched between languages (currently hardcoded in Spanish)
-- Provide a language selector (and/or detect the browser language) with a sensible default
-- Coordinate with item #2 (narration language) so the UI language and the transcription/LLM prompt language stay consistent
+### 7. Bilingual frontend (Spanish + English) — ✅ mostly done (2026-06-29, ADR-0016)
+- [x] User-facing frontend available in both Spanish and English
+- [x] i18n layer so all UI strings, button labels, and error messages switch between languages
+- [x] Language selector (top-right ES/EN switcher, default Spanish, persisted in localStorage)
+- [x] The selected language sets the expected transcription input language (Whisper)
+- [ ] Optional: auto-detect the browser language on first visit
+- [ ] Remaining LLM-side language work (prompts, date format) lives in #8
 
 ### 8. Multi-language infrastructure for end-to-end records (any language)
 > Goal: when we want to run the app in any language, the infrastructure and code must automatically accept and process the record in each language end-to-end — not just translate the UI (#7). Today most of the pipeline is hardcoded to Spanish.
 - **Per-session language**: store the chosen/detected language on the session (DB column + migration) so transcription, extraction, and output all stay consistent for that record.
-- **Transcription**: replace the hardcoded `LANGUAGE = "es"` in `whisper_service.py` with the session language, or let Whisper auto-detect the spoken language per recording.
+- **Transcription**: ✅ done — `whisper_service.transcribe()` takes a `language` arg (the UI sends es/en per request); the old hardcoded `LANGUAGE = "es"` is gone. Still pending: persist it per session rather than per request.
 - **LLM prompts**: make the extraction/enrichment prompts (`prompt_builder.py`, `llm_enrichment_service.py`, currently Spanish) language-aware via templates per language, so the model is instructed in/for the right language.
 - **Schema data-type names**: the Excel template type values (`texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`) are Spanish words — schema detection and type parsing must recognize the equivalents in each supported language (or normalize to a language-agnostic internal enum).
 - **Locale-aware value parsing/formatting** when writing to the Excel file:

@@ -1,3 +1,5 @@
+import { localized } from '../i18n/LanguageContext';
+
 /**
  * Represents a single extracted value mapped to a column.
  */
@@ -95,7 +97,8 @@ export class ExtractionApiError extends Error {
 }
 
 /**
- * Maps backend error responses to user-friendly messages in Spanish.
+ * Maps backend error responses to user-friendly messages in the active UI
+ * language (Spanish or English).
  */
 function mapExtractionErrorToUserMessage(
   statusCode: number,
@@ -104,41 +107,83 @@ function mapExtractionErrorToUserMessage(
 ): string {
   switch (errorCode) {
     case 'EMPTY_TRANSCRIPTION':
-      return 'El texto transcrito está vacío. Grabe audio antes de extraer datos.';
+      return localized(
+        'El texto transcrito está vacío. Grabe audio antes de extraer datos.',
+        'The transcribed text is empty. Record audio before extracting data.'
+      );
     case 'SESSION_NOT_FOUND':
-      return 'La sesión no fue encontrada. Puede que haya expirado.';
+      return localized(
+        'La sesión no fue encontrada. Puede que haya expirado.',
+        'The session was not found. It may have expired.'
+      );
     case 'SESSION_NOT_CONFIRMED':
-      return 'La sesión no ha sido confirmada. Confirme el esquema antes de extraer datos.';
+      return localized(
+        'La sesión no ha sido confirmada. Confirme el esquema antes de extraer datos.',
+        'The session has not been confirmed. Confirm the schema before extracting data.'
+      );
     case 'SESSION_FINALIZED':
-      return 'La sesión ya fue finalizada. Descargue el Excel o cargue una nueva plantilla.';
+      return localized(
+        'La sesión ya fue finalizada. Descargue el Excel o cargue una nueva plantilla.',
+        'The session is already finalized. Download the Excel or upload a new template.'
+      );
     case 'LLM_UNAVAILABLE':
-      return 'El servicio de extracción no está disponible en este momento. Intente de nuevo.';
+      return localized(
+        'El servicio de extracción no está disponible en este momento. Intente de nuevo.',
+        'The extraction service is unavailable right now. Please try again.'
+      );
     case 'LLM_INVALID_RESPONSE':
-      return 'Error al procesar la extracción. Intente de nuevo.';
+      return localized(
+        'Error al procesar la extracción. Intente de nuevo.',
+        'Error processing the extraction. Please try again.'
+      );
     case 'LLM_EMPTY_RESPONSE':
-      return 'El servicio no generó una respuesta válida. Intente de nuevo.';
+      return localized(
+        'El servicio no generó una respuesta válida. Intente de nuevo.',
+        'The service did not produce a valid response. Please try again.'
+      );
     case 'FILE_WRITE_ERROR':
-      return 'Error al escribir en el archivo Excel. Intente de nuevo.';
+      return localized(
+        'Error al escribir en el archivo Excel. Intente de nuevo.',
+        'Error writing to the Excel file. Please try again.'
+      );
     case 'FILE_NOT_FOUND':
-      return 'El archivo Excel no fue encontrado. Cargue un nuevo archivo.';
+      return localized(
+        'El archivo Excel no fue encontrado. Cargue un nuevo archivo.',
+        'The Excel file was not found. Upload a new file.'
+      );
     case 'DATABASE_ERROR':
       // Surface the backend detail when present: a discarded detail is exactly
       // what masked the original file_path crash (ADR-0013).
-      return detail || 'Error interno del servidor. Intente de nuevo más tarde.';
+      return detail || localized(
+        'Error interno del servidor. Intente de nuevo más tarde.',
+        'Internal server error. Please try again later.'
+      );
     default:
       break;
   }
 
   // Fallback based on status code ranges
   if (statusCode === 422) {
-    return detail || 'Error de validación. Revise los datos ingresados.';
+    return detail || localized(
+      'Error de validación. Revise los datos ingresados.',
+      'Validation error. Check the entered data.'
+    );
   }
   if (statusCode === 404) {
-    return 'El recurso solicitado no fue encontrado.';
+    return localized(
+      'El recurso solicitado no fue encontrado.',
+      'The requested resource was not found.'
+    );
   }
   if (statusCode >= 500) {
-    return detail || 'Error del servidor. Intente de nuevo más tarde.';
+    return detail || localized(
+      'Error del servidor. Intente de nuevo más tarde.',
+      'Server error. Please try again later.'
+    );
   }
 
-  return detail || 'Ha ocurrido un error inesperado.';
+  return detail || localized(
+    'Ha ocurrido un error inesperado.',
+    'An unexpected error occurred.'
+  );
 }

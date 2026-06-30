@@ -1,68 +1,81 @@
 .container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 12px;
   width: 100%;
-  max-width: 480px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border);
 }
 
 .counter {
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
-  color: #6b7280;
+  letter-spacing: 0.01em;
+  color: var(--color-text-muted);
+  text-align: center;
   margin: 0;
 }
 
 .finalized {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
+  align-items: stretch;
+  gap: 12px;
   width: 100%;
 }
 
 .finalizedMessage {
-  font-size: 14px;
-  color: #2563eb;
+  font-size: 0.875rem;
+  color: var(--color-accent-subtle-fg);
   text-align: center;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .finalizeButton,
 .downloadButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px 20px;
-  font-size: 14px;
+  padding: 11px 20px;
+  font-size: 0.9375rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--color-accent-fg);
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition: background-color var(--transition), opacity var(--transition);
+}
+
+.finalizeButton svg,
+.downloadButton svg {
+  width: 18px;
+  height: 18px;
 }
 
 .finalizeButton {
-  background-color: #2563eb;
+  background-color: var(--color-accent);
 }
 
 .finalizeButton:hover:not([aria-disabled='true']) {
-  background-color: #1d4ed8;
+  background-color: var(--color-accent-hover);
 }
 
 .downloadButton {
-  background-color: #16a34a;
+  background-color: var(--color-success);
 }
 
 .downloadButton:hover:not([aria-disabled='true']) {
-  background-color: #15803d;
+  background-color: var(--color-success-hover);
 }
 
 .finalizeButton:focus-visible,
 .downloadButton:focus-visible {
-  outline: 2px solid #1d4ed8;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .finalizeButton[aria-disabled='true'],

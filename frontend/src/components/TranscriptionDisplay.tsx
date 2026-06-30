@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/LanguageContext';
 import styles from './TranscriptionDisplay.module.css';
 
 export interface TranscriptionDisplayProps {
@@ -9,6 +10,8 @@ export interface TranscriptionDisplayProps {
   isDisabled: boolean;
   /** Called on every keystroke to update parent state */
   onChange: (text: string) => void;
+  /** Optional note shown below the textarea (e.g. a verification hint after accept) */
+  notice?: string;
 }
 
 /**
@@ -25,7 +28,9 @@ export function TranscriptionDisplay({
   isLoading,
   isDisabled,
   onChange,
+  notice,
 }: TranscriptionDisplayProps) {
+  const { t } = useI18n();
   return (
     <div className={styles.container} aria-busy={isLoading}>
       <textarea
@@ -33,14 +38,19 @@ export function TranscriptionDisplay({
         value={text}
         onChange={(e) => onChange(e.target.value)}
         disabled={isLoading || isDisabled}
-        placeholder="El texto transcrito aparecerá aquí..."
-        aria-label="Texto transcrito"
+        placeholder={t('display.placeholder')}
+        aria-label={t('display.ariaTextarea')}
         rows={4}
       />
       {isLoading && (
-        <div className={styles.loadingOverlay} role="status" aria-label="Transcribiendo audio">
+        <div className={styles.loadingOverlay} role="status" aria-label={t('display.ariaTranscribing')}>
           <div className={styles.spinner} aria-hidden="true" />
         </div>
+      )}
+      {notice && !isLoading && (
+        <p className={styles.notice} role="status">
+          {notice}
+        </p>
       )}
     </div>
   );

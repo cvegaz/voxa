@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { templateApi } from '../services/templateApi';
 import { TemplateApiError } from '../types/template';
+import { useI18n } from '../i18n/LanguageContext';
 
 const MIN_CHARS = 50;
 const MAX_CHARS = 3000;
@@ -18,6 +19,7 @@ export interface ContextInputProps {
  * and triggers LLM enrichment via the backend.
  */
 export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps) {
+  const { t } = useI18n();
   const [context, setContext] = useState('');
   const [state, setState] = useState<ComponentState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -52,10 +54,10 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
       if (err instanceof TemplateApiError) {
         setErrorMessage(err.userMessage);
       } else {
-        setErrorMessage('Ha ocurrido un error inesperado. Intente de nuevo.');
+        setErrorMessage(t('common.unexpectedError'));
       }
     }
-  }, [sessionId, context, isValid, state, onConfirmSuccess]);
+  }, [sessionId, context, isValid, state, onConfirmSuccess, t]);
 
   const handleRetry = useCallback(() => {
     handleConfirm();
@@ -64,9 +66,9 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
   // Validation message logic
   let validationMessage = '';
   if (isTooShort) {
-    validationMessage = `Escriba al menos 50 caracteres (${charCount} actualmente)`;
+    validationMessage = t('context.tooShort', { count: charCount });
   } else if (isTooLong) {
-    validationMessage = 'El texto supera el límite de 3000 caracteres';
+    validationMessage = t('context.tooLong');
   }
 
   return (
@@ -75,7 +77,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
       {(state === 'idle' || state === 'error') && (
         <>
           <label htmlFor="context-textarea" className="context-input__label">
-            Descripción del contexto del Excel
+            {t('context.label')}
           </label>
 
           <textarea
@@ -83,7 +85,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
             className={`context-input__textarea${validationMessage ? ' context-input__textarea--invalid' : ''}`}
             value={context}
             onChange={handleChange}
-            placeholder="Describa qué es este Excel, su historia y lo que contiene (mínimo 50 caracteres)..."
+            placeholder={t('context.placeholder')}
             rows={6}
             aria-describedby="context-char-count context-validation-message"
             aria-invalid={isTooShort || isTooLong || undefined}
@@ -96,7 +98,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
             aria-live="polite"
             aria-atomic="true"
           >
-            {charCount}/{MAX_CHARS} caracteres
+            {t('context.counter', { count: charCount, max: MAX_CHARS })}
           </div>
 
           {/* Validation message */}
@@ -119,7 +121,7 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
                 className="context-input__retry-button"
                 onClick={handleRetry}
               >
-                Reintentar
+                {t('common.retry')}
               </button>
             </div>
           )}
@@ -130,9 +132,9 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
             className="context-input__confirm-button"
             disabled={isButtonDisabled}
             onClick={handleConfirm}
-            aria-label="Confirmar contexto y continuar"
+            aria-label={t('context.ariaConfirm')}
           >
-            Confirmar y Continuar
+            {t('context.confirm')}
           </button>
         </>
       )}
@@ -141,14 +143,14 @@ export function ContextInput({ sessionId, onConfirmSuccess }: ContextInputProps)
       {state === 'processing' && (
         <div className="context-input__processing" role="status" aria-live="polite">
           <div className="context-input__spinner" aria-hidden="true" />
-          <p>Procesando contexto con inteligencia artificial...</p>
+          <p>{t('context.processing')}</p>
         </div>
       )}
 
       {/* Success state — brief confirmation (parent handles next step) */}
       {state === 'success' && (
         <div className="context-input__success" role="status" aria-live="polite">
-          <p>Contexto enriquecido generado exitosamente.</p>
+          <p>{t('context.success')}</p>
         </div>
       )}
     </div>

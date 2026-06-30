@@ -43,6 +43,7 @@ async def transcribe_audio(
     request: Request,
     file: UploadFile,
     duration: float = Form(...),
+    language: str = Form("es"),
 ):
     """Transcribe an uploaded audio file using OpenAI Whisper API.
 
@@ -85,9 +86,13 @@ async def transcribe_audio(
     audio_bytes = await file.read()
     mime_type = file.content_type or "audio/webm"
 
+    # Only the languages the UI offers are honored; anything else falls back to
+    # Spanish so a bad value never reaches the Whisper API.
+    spoken_language = language if language in ("es", "en") else "es"
+
     whisper_service = WhisperTranscriptionService()
     try:
-        text = await whisper_service.transcribe(audio_bytes, mime_type)
+        text = await whisper_service.transcribe(audio_bytes, mime_type, spoken_language)
     except WhisperNoSpeechError as e:
         raise HTTPException(
             status_code=422,

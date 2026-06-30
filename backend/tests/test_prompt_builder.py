@@ -1,5 +1,7 @@
 """Unit tests for PromptBuilder service."""
 
+from datetime import date
+
 import pytest
 
 from app.models import ColumnDef, ColumnSchema
@@ -195,6 +197,19 @@ class TestPromptBuilderBuild:
         assert '"Horario": ""' in prompt
         # Boolean absence → "no".
         assert '"Alberca": "no"' in prompt
+
+    def test_injects_current_date_for_yearless_dates(self, builder, single_column_schema):
+        """The prompt states the current date and tells the model to use the
+        current year when a narrated date omits the year (so it does not invent
+        one, e.g. defaulting to 2023)."""
+        prompt = builder.build(
+            enriched_context="Contexto",
+            schema=single_column_schema,
+            transcribed_text="La charla fue el 17 de septiembre",
+            today=date(2026, 3, 15),
+        )
+        assert "La fecha actual es 15/03/2026" in prompt
+        assert "usa el año actual (2026)" in prompt
 
     def test_sections_separated_by_dividers(self, builder, single_column_schema):
         """The prompt sections are separated by standalone --- dividers."""

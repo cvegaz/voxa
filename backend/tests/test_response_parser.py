@@ -94,6 +94,18 @@ class TestDateNormalization:
 
         assert result["Fecha"] == "sin fecha"
 
+    def test_date_formatted_for_english_session(self, parser):
+        """In an English session, dates are formatted MM/DD/YYYY."""
+        schema = ColumnSchema(
+            columns=[
+                ColumnDef(index=1, name="Date", data_type="date", example_value="01/01/2020"),
+            ]
+        )
+        raw = json.dumps({"Date": "September 17, 2026"})
+        result = parser.parse(raw, schema, language="en")
+
+        assert result["Date"] == "09/17/2026"
+
 
 class TestMissingKeys:
     """Tests for JSON responses with missing keys."""

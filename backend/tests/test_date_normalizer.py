@@ -79,3 +79,30 @@ class TestNormalizeDateValue:
     def test_unparseable_returns_unchanged(self, value):
         # Unrecognized or invalid dates are preserved verbatim, never corrupted.
         assert normalize_date_value(value) == value
+
+
+class TestNormalizeDateValueEnglish:
+    """English sessions format dates as MM/DD/YYYY and read numeric input as MM/DD."""
+
+    @pytest.mark.parametrize(
+        "value,expected",
+        [
+            ("09/17/2026", "09/17/2026"),      # already MM/DD
+            ("2026-09-17", "09/17/2026"),      # ISO
+            ("September 17, 2026", "09/17/2026"),
+            ("Sep 17 2026", "09/17/2026"),
+            ("17 September 2026", "09/17/2026"),
+            ("9/5/2026", "09/05/2026"),        # MM/DD, zero-padded
+            ("09/17/2026 10:30", "09/17/2026"),  # time dropped
+        ],
+    )
+    def test_english_formats(self, value, expected):
+        assert normalize_date_value(value, "en") == expected
+
+    def test_numeric_disambiguation_follows_language(self):
+        # The same ambiguous input is read DD/MM in Spanish, MM/DD in English.
+        assert normalize_date_value("03/04/2026", "es") == "03-abr-2026"
+        assert normalize_date_value("03/04/2026", "en") == "03/04/2026"
+
+    def test_english_already_normalized_is_stable(self):
+        assert normalize_date_value("09/17/2026", "en") == "09/17/2026"

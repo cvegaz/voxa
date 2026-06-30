@@ -50,11 +50,11 @@
 - **Per-session language**: ✅ done — `template_sessions.language` (migration 006), **fixed when the template is confirmed** (the UI sends its language to `/confirm`). Transcription, enrichment, and extraction all read it.
 - **Transcription**: ✅ done — `whisper_service.transcribe()` takes a `language` arg, and the transcribe route now uses the **session** language (`active_session.language`), not a per-request value.
 - **LLM prompts**: ✅ done — `prompt_builder.build()` and `LLMEnrichmentService.enrich()` emit ES/EN templates **and are wired** to the session language (confirm → enrichment; orchestrator → extraction prompt). Tested ES+EN.
-- **Schema data-type names**: the Excel template type values (`texto`, `número entero`, `fecha DD/MM/YYYY`, `booleano`) are Spanish words — schema detection and type parsing must recognize the equivalents in each supported language (or normalize to a language-agnostic internal enum).
-- **Locale-aware value parsing/formatting** when writing to the Excel file:
-  - Dates: `DD/MM/YYYY` vs `MM/DD/YYYY` and other locale orders.
-  - Numbers: decimal/thousands separators (`1.000,50` vs `1,000.50`).
-  - Booleans: localized truthy/falsy words (`sí/no`, `yes/no`, `true/false`, etc.).
+- **Schema data-type names**: ✅ sufficient for now — the only type-driven branch is date detection, and `is_date_type()` recognizes both Spanish "fecha" and English "date". A broader language-agnostic type enum is not needed until other types branch on language.
+- **Locale-aware value parsing/formatting**:
+  - Dates: ✅ done — the normalizer is language-aware: Spanish reads DD/MM and outputs `DD-mmm-YYYY` (`17-sep-2026`); English reads MM/DD and outputs `MM/DD/YYYY` (`09/17/2026`). Driven by the session language via `response_parser`.
+  - Numbers: ✅ decided — left **as-is** (no normalization), to avoid mis-reading ambiguous separators (product decision, 2026-06-30).
+  - Booleans: handled by the extraction prompt (the model returns the localized value / `"no"` for explicit absence); no separate normalization layer.
 - **Enriched context language**: ✅ done — `Contexto_Enriquecido` is generated in the session language (enrichment runs in es/en at confirm time).
 - **Error messages from the pipeline**: ⚠️ partial — the **frontend** error copy is fully localized (ADR-0016), but the **backend** `detail` strings (in routes/exceptions) are still Spanish. Localize those (or have the frontend rely only on `errorCode`).
 - **Tests**: add fixtures and cases per language (at least ES + EN) for transcription, extraction, parsing, and Excel output.

@@ -10,17 +10,20 @@ from app.services.exceptions import LLMInvalidResponseError
 class ResponseParser:
     """Parses and validates the model's JSON responses against a ColumnSchema."""
 
-    def parse(self, raw_response: str, schema: ColumnSchema) -> dict[str, str]:
+    def parse(
+        self, raw_response: str, schema: ColumnSchema, language: str = "es"
+    ) -> dict[str, str]:
         """
         Parse the model's response as JSON.
         Validate that the keys correspond to the columns in the schema.
         Assign an empty string to missing or null fields.
-        Normalize values of date-typed columns to a uniform DD-mmm-YYYY form.
+        Normalize values of date-typed columns to the session language's date form.
         Return a dict {column_name: value}.
 
         Args:
             raw_response: Raw JSON string response from the model.
             schema: ColumnSchema defining expected columns.
+            language: Session language ("es"/"en") for date formatting.
 
         Returns:
             Dictionary mapping column names to string values.
@@ -48,7 +51,7 @@ class ResponseParser:
             else:
                 text = str(value)
                 if is_date_type(column.data_type):
-                    text = normalize_date_value(text)
+                    text = normalize_date_value(text, language)
                 result[column.name] = text
 
         return result

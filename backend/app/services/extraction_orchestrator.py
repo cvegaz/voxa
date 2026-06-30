@@ -79,8 +79,8 @@ class ExtractionOrchestrator:
         # 3. Call LLM
         raw_response = await self._llm_service.extract(prompt)
 
-        # 4. Parse response
-        record = self._response_parser.parse(raw_response, schema)
+        # 4. Parse response (date values formatted for the session language)
+        record = self._response_parser.parse(raw_response, schema, language=language)
 
         # 5. Derive row_number from the authoritative record count and persist.
         #    extraction_records is the single source of truth (ADR-0013), so the

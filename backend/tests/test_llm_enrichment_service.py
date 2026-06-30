@@ -89,6 +89,24 @@ class TestLLMEnrichmentServiceEnrich:
         mock_client.chat.completions.create.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_enrich_uses_english_prompt_when_language_en(
+        self, service, mock_client, sample_context, sample_schema
+    ):
+        """With language='en', the enrichment prompt is built in English."""
+        mock_client.chat.completions.create = AsyncMock(
+            return_value=_make_message_response("enriched")
+        )
+
+        await service.enrich(sample_context, sample_schema, "en")
+
+        prompt_content = mock_client.chat.completions.create.call_args.kwargs[
+            "messages"
+        ][0]["content"]
+        assert "expert assistant in data processing" in prompt_content
+        assert "## User context" in prompt_content
+        assert "Eres un asistente" not in prompt_content
+
+    @pytest.mark.asyncio
     async def test_enrich_builds_prompt_with_context_and_schema(
         self, service, mock_client, sample_context, sample_schema
     ):

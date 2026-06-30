@@ -18,8 +18,9 @@ class PromptBuilder:
         schema: ColumnSchema,
         transcribed_text: str,
         today: date | None = None,
+        language: str = "es",
     ) -> str:
-        """Construct the prompt for the model.
+        """Construct the prompt for the model, in the given language.
 
         Includes:
         - Enriched context as system context
@@ -35,18 +36,25 @@ class PromptBuilder:
             transcribed_text: The transcribed audio text to extract data from.
             today: Reference date used to resolve year-less dates. Defaults to the
                 current date; injectable for deterministic tests.
+            language: UI/record language ("es" or "en"); selects the prompt
+                language. Defaults to Spanish.
 
         Returns:
             A formatted prompt string for the model.
         """
         today = today or date.today()
-        # Build schema table rows
+        # Schema table rows are language-independent (they hold the user's column
+        # names, types, and examples verbatim).
         schema_rows = "\n".join(
             f"| {col.index} | {col.name} | {col.data_type} | {col.example_value} |"
             for col in schema.columns
         )
 
-        # Build JSON structure example
+        if language == "en":
+            return self._build_en(enriched_context, schema, schema_rows, transcribed_text, today)
+        return self._build_es(enriched_context, schema, schema_rows, transcribed_text, today)
+
+    def _build_es(self, enriched_context, schema, schema_rows, transcribed_text, today) -> str:
         json_example = ",\n  ".join(
             f'"{col.name}": "valor extraído"' for col in schema.columns
         )
@@ -90,6 +98,55 @@ class PromptBuilder:
             'Respuesta: {"Hotel": "Sol", "Alberca": "no"}\n'
             '(Alberca es "no" porque el texto dice explícitamente que NO la tiene.)\n\n'
             "- Responde ÚNICAMENTE con un JSON válido con esta estructura exacta:\n"
+            "{\n"
+            f"  {json_example}\n"
+            "}"
+        )
+
+    def _build_en(self, enriched_context, schema, schema_rows, transcribed_text, today) -> str:
+        json_example = ",\n  ".join(
+            f'"{col.name}": "extracted value"' for col in schema.columns
+        )
+
+        return (
+            "You are a data-extraction assistant. Your task is to identify specific\n"
+            "values in an audio transcription and return them in JSON format.\n\n"
+            f"{enriched_context}\n\n"
+            "---\n\n"
+            "The Excel schema has the following columns:\n\n"
+            "| # | Name | Data type | Example |\n"
+            "|---|------|-----------|---------|\n"
+            f"{schema_rows}\n\n"
+            "---\n\n"
+            "Audio transcription:\n"
+            f'"{transcribed_text}"\n\n'
+            "---\n\n"
+            "Instructions:\n"
+            "- Identify in the transcription the value that corresponds to EACH column.\n"
+            "- Distinguish between a value that is NOT mentioned and one that is mentioned\n"
+            "  as absent, non-existent, or none:\n"
+            '  - If the column is not mentioned in the text, use an empty string "".\n'
+            "  - If the text explicitly states that something does not exist or is none\n"
+            '    (for example, "the place has no parking"), do NOT leave it empty:\n'
+            "    use the value that represents zero or absence for the data type\n"
+            '    (0 for numbers, "no" for booleans).\n'
+            "- Respect the data type indicated for each column.\n"
+            f"- The current date is {today:%Y-%m-%d}. If a date is mentioned without a\n"
+            f"  year, use the current year ({today:%Y}); do not default to any other year.\n"
+            "\n"
+            "Illustrative examples (they show the difference between an absent value and\n"
+            "an unmentioned one; do NOT use these values in your answer):\n\n"
+            "Example 1 — columns: Place (text), TennisCourts (integer),\n"
+            "Fountains (integer), Hours (text)\n"
+            'Text: "I visited Central Park. There are no tennis courts. It has 3 fountains."\n'
+            'Answer: {"Place": "Central", "TennisCourts": "0", "Fountains": "3", "Hours": ""}\n'
+            "(TennisCourts is 0 because the text says there are NONE; Hours is empty\n"
+            "because it is not mentioned.)\n\n"
+            "Example 2 — columns: Hotel (text), Pool (boolean)\n"
+            'Text: "The Sol hotel has no pool."\n'
+            'Answer: {"Hotel": "Sol", "Pool": "no"}\n'
+            '(Pool is "no" because the text explicitly says it does NOT have one.)\n\n'
+            "- Respond ONLY with valid JSON in this exact structure:\n"
             "{\n"
             f"  {json_example}\n"
             "}"

@@ -211,6 +211,32 @@ class TestPromptBuilderBuild:
         assert "La fecha actual es 15/03/2026" in prompt
         assert "usa el año actual (2026)" in prompt
 
+    def test_english_prompt_when_language_en(self, builder, multi_column_schema):
+        """With language='en' the prompt is built in English; default stays Spanish."""
+        prompt = builder.build(
+            enriched_context="Context",
+            schema=multi_column_schema,
+            transcribed_text="Text",
+            today=date(2026, 3, 15),
+            language="en",
+        )
+        assert "You are a data-extraction assistant" in prompt
+        assert "| # | Name | Data type | Example |" in prompt
+        assert '"extracted value"' in prompt
+        assert "use the current year (2026)" in prompt
+        # No Spanish scaffolding leaks into the English prompt.
+        assert "asistente de extracción" not in prompt
+        assert "valor extraído" not in prompt
+
+    def test_defaults_to_spanish(self, builder, single_column_schema):
+        """Omitting language keeps the Spanish prompt."""
+        prompt = builder.build(
+            enriched_context="Contexto",
+            schema=single_column_schema,
+            transcribed_text="Texto",
+        )
+        assert "Eres un asistente de extracción de datos" in prompt
+
     def test_sections_separated_by_dividers(self, builder, single_column_schema):
         """The prompt sections are separated by standalone --- dividers."""
         prompt = builder.build(

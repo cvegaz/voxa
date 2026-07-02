@@ -45,3 +45,4 @@ kept lightweight on purpose.
 | [0015](0015-extraction-value-semantics.md) | Extraction value semantics (absent vs. unmentioned, date formatting) | Accepted |
 | [0016](0016-frontend-i18n-approach.md) | Lightweight in-house i18n for the frontend (ES/EN) | Accepted |
 | [0017](0017-per-session-language-and-locale-formatting.md) | Per-session language and locale formatting | Accepted |
+| [0018](0018-extract-reusable-core-engine.md) | Extract a reusable narration→structured-data core (`voxa-core`) | Accepted |

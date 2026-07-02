@@ -69,6 +69,23 @@
 - For a paid tier: source the cap from the user's plan and pass it through both
   layers, instead of using the single free-tier default.
 
+### 10. Auto-generate a transcription vocabulary from the template (Whisper prompt)
+- `voxa-core`'s `WhisperTranscriptionService.transcribe()` now accepts an optional
+  `prompt` (vocabulary/style bias), but Voxa does not fill it yet.
+- Idea: at template **confirm** time, derive a compact domain vocabulary from the
+  template and store it on the session (like `enriched_context`), then pass it to
+  Whisper on every transcription so domain terms and example values transcribe
+  correctly (fewer mis-hears).
+- Sources: (a) **deterministic** — column names + `Ejemplo_Valor` (cheap, always
+  available); (b) **LLM** — piggyback on the enrichment call, which already asks for
+  "sinónimos o variaciones de cómo un hablante podría referirse a cada dato", to
+  also emit a ~20–40 term list. Hybrid recommended.
+- Boundary: the generic "schema (+ context) → vocabulary string" capability belongs
+  in `voxa-core` (next to the `prompt` hook); Voxa wires generate-on-confirm → store
+  on session → pass to Whisper. Origin: playpro_stats ADR-0008 hand-wrote its FBA
+  vocabulary; this generalizes it. Note: terse, code-style column names (like pps's
+  `qb_no`) benefit less — field *descriptions* would feed a better LLM-generated list.
+
 ---
 
 # Publishing and deployment roadmap

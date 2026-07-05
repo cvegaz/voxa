@@ -97,6 +97,41 @@ spending cap, so the free test cannot drain the API account.
   vocabulary; this generalizes it. Note: terse, code-style column names (like pps's
   `qb_no`) benefit less — field *descriptions* would feed a better LLM-generated list.
 
+### 11. Freemium app + membership (owner direction, 2026-07-05)
+
+> Voxa — unlike playpro_stats, whose capture app stays store-less — IS the
+> right product for app-store presence and a freemium model: its users are
+> unknown (store discoverability is a real channel), a consumer paying with a
+> card values the store trust badge, and subscriptions are the category's
+> standard monetization.
+
+- **Free tier (owner-defined)**: max **8 fields** per template and ~**10
+  entries** — a capability limit (shapes perception, feels complete but
+  bounded) plus a usage limit (caps the real OpenAI cost: ~cents per free
+  user, sustainable acquisition cost). Open sub-decision: entry-limit
+  cadence — lifetime trial vs **monthly reset (recommended: retention/habit
+  beats one-shot trial pressure)**.
+- **Membership**: unlocks feature gates. Candidates: >8 fields, more/unlimited
+  entries, longer recordings (generalizes #9's tier-based 20 s cap),
+  multiple records per audio (#3), persistent enriched context (#4),
+  export/API options.
+- **Prerequisites (build order matters)**:
+  1. **User accounts** — Voxa is fully anonymous today; account-based limits
+     are the only defensible ones (IP limits are trivially evaded). The pps
+     Stage-A auth (JWT + bcrypt, its ADR-0016) is the harvestable pattern.
+  2. **Entitlement layer**: plan → limits (fields, entries, seconds,
+     features), enforced server-side; usage metering per account.
+  3. **Payments**: web (Stripe — no store cut) vs in-app purchase (15–30%
+     commission, frictionless). Likely web-first; decide at build time.
+- **Distribution**: same staged logic as the pps field-capture plan — PWA
+  first (validate), stores when monetization is live and discoverability
+  starts paying. Store costs: Apple $99 USD/year, Google Play $25 USD
+  one-time.
+- **Relationship to the public demo limits** (Deployment section above):
+  complementary layers, not the same thing — the anonymous web demo keeps its
+  hard per-IP/per-day caps as a marketing teaser; the free TIER is an
+  account with the 8-field/10-entry plan; membership lifts the gates.
+
 ---
 
 # Publishing and deployment roadmap

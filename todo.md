@@ -1,5 +1,16 @@
 # TODO — Improvements for future versions
 
+## Deployment (owner decisions, 2026-07-04 — shared plan with playpro_stats)
+
+Staged AWS path recorded in
+`../playpro_stats/docs/design/aws-deployment-plan.md`: Stage 1 = one EC2 with
+Docker Compose + Caddy (HTTPS automatic), provisioned with Terraform from day
+one in a NEW dedicated AWS account; Stage 2 = ECS Express Mode (App Runner is
+in maintenance mode, closed to new customers 2026-04-30). Separate domain for
+Voxa. **Voxa-specific pre-deploy work**: limit the public demo — per-visitor
+(per-IP) rate limit AND a global per-day operation budget, plus the OpenAI
+spending cap, so the free test cannot drain the API account.
+
 ## Pending discussion and implementation
 
 ### 1. Record review & editing

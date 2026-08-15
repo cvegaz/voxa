@@ -58,8 +58,12 @@ describe('SessionControls', () => {
   });
 
   it('shows the cap message when finalized by reaching the limit', () => {
+    // Reads as an exit, not a closed door (ADR-0019 §5): hitting the trial cap
+    // must point at the download rather than just announcing that the session
+    // ended, otherwise the visitor leaves without their result.
     render(<SessionControls {...defaultProps} totalRows={5} finalized={true} />);
-    expect(screen.getByText(/límite de 5 registros alcanzado/i)).toBeInTheDocument();
+    expect(screen.getByText(/llegaste a los 5 registros/i)).toBeInTheDocument();
+    expect(screen.getByText(/descarga tu excel/i)).toBeInTheDocument();
   });
 
   it('shows a plain finalized message when closed below the cap', () => {

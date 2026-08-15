@@ -13,15 +13,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.database import close_pool, get_pool
 from app.rate_limit import limiter
 from app.routes.contact_routes import router as contact_router
+from app.routes.demo_lead_routes import router as demo_lead_router
 from app.routes.extraction_routes import router as extraction_router
 from app.routes.template_routes import router as template_router
 from app.routes.transcription_routes import router as transcription_router
+from app.services.exceptions import DemoBudgetExhaustedError
 
 # Origins allowed to call the API cross-origin. The app frontend is served
 # same-origin (Nginx proxies /api), but the public landing page is a separate
 # static site on its own origin, so its contact form needs CORS. Comma-separated
 # list via LANDING_ORIGINS; defaults to the local dev servers.
-_DEFAULT_LANDING_ORIGINS = "http://localhost:5173,http://localhost:4173"
+_DEFAULT_LANDING_ORIGINS = "http://localhost:5301"
 LANDING_ORIGINS = [
     origin.strip()
     for origin in os.getenv("LANDING_ORIGINS", _DEFAULT_LANDING_ORIGINS).split(",")
@@ -70,6 +72,23 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
+@app.exception_handler(DemoBudgetExhaustedError)
+async def demo_budget_handler(request: Request, exc: DemoBudgetExhaustedError):
+    """Flatten the demo's spend ceiling to the frontend error contract.
+
+    Handled globally rather than per route so all three billable endpoints answer
+    identically — a limit that speaks differently depending on where you hit it is
+    a limit users cannot learn.
+
+    429 rather than 503: the request is well-formed and the service is healthy;
+    what ran out is a quota. 503 would tell monitoring the app is down.
+    """
+    return JSONResponse(
+        status_code=429,
+        content={"detail": exc.detail, "errorCode": exc.error_code},
+    )
+
+
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Flatten all HTTP errors to the contract the frontend expects:
@@ -115,3 +134,4 @@ app.include_router(template_router)
 app.include_router(transcription_router)
 app.include_router(extraction_router)
 app.include_router(contact_router)
+app.include_router(demo_lead_router)

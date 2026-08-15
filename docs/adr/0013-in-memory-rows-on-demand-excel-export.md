@@ -1,7 +1,11 @@
 # 0013. In-memory working rows with on-demand Excel export
 
 - **Date**: 2026-06-26
-- **Status**: Accepted
+- **Status**: Accepted — **amended by [ADR-0019](0019-public-demo-limits.md)**
+  (2026-08-14). The design below stands unchanged; only the **number** moved. The
+  "5 rows" cap is now **3**, reconciled into the anonymous trial allowance and read
+  from the environment (`ANONYMOUS_MAX_NARRATIONS`). Wherever this document says
+  5, read "the configured row cap".
 
 ## Context
 

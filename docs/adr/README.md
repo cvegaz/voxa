@@ -40,9 +40,10 @@ kept lightweight on purpose.
 | [0010](0010-containerized-delivery-docker-compose.md) | Containerized delivery with Docker Compose | Accepted |
 | [0011](0011-secrets-and-configuration-management.md) | Secrets and configuration management | Accepted |
 | [0012](0012-multi-language-strategy.md) | Multi-language strategy (end-to-end) | Proposed |
-| [0013](0013-in-memory-rows-on-demand-excel-export.md) | In-memory working rows with on-demand Excel export | Accepted |
-| [0014](0014-audio-capture-constraints.md) | Audio capture constraints (recording length and input quality) | Accepted |
+| [0013](0013-in-memory-rows-on-demand-excel-export.md) | In-memory working rows with on-demand Excel export | Accepted (amended by [0019](0019-public-demo-limits.md)) |
+| [0014](0014-audio-capture-constraints.md) | Audio capture constraints (recording length and input quality) | Accepted (amended by [0019](0019-public-demo-limits.md)) |
 | [0015](0015-extraction-value-semantics.md) | Extraction value semantics (absent vs. unmentioned, date formatting) | Accepted |
 | [0016](0016-frontend-i18n-approach.md) | Lightweight in-house i18n for the frontend (ES/EN) | Accepted |
 | [0017](0017-per-session-language-and-locale-formatting.md) | Per-session language and locale formatting | Accepted |
 | [0018](0018-extract-reusable-core-engine.md) | Extract a reusable narration→structured-data core (`voxa-core`) | Accepted |
+| [0019](0019-public-demo-limits.md) | Public demo limits (cost containment for an anonymous demo) | Accepted |

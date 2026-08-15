@@ -17,10 +17,23 @@ from app.models.transcription_models import (
     TranscribeResponse,
     TranscriptionSession,
 )
-from app.repositories import TemplateRepository, TranscriptionRepository
+from app.rate_limit import (
+    BILLABLE_RATE_LIMIT_DAY,
+    BILLABLE_RATE_LIMIT_HOUR,
+    limiter,
+)
+from app.repositories import (
+    TemplateRepository,
+    TranscriptionRepository,
+    UsageRepository,
+)
 from app.services import (
+    OPERATION_TRANSCRIPTION,
     AcceptanceValidator,
+    AudioDurationProbe,
+    AudioUnreadableError,
     AudioValidator,
+    UsageBudget,
     WhisperEmptyResponseError,
     WhisperNoSpeechError,
     WhisperTranscriptionService,
@@ -28,6 +41,21 @@ from app.services import (
 )
 
 router = APIRouter(prefix="/api/transcriptions", tags=["transcriptions"])
+
+# Container hint for the duration probe. ffprobe detects the format from content,
+# so this only helps the occasional ambiguous stream — it is never trusted.
+_SUFFIX_BY_MIME = {
+    "audio/webm": ".webm",
+    "audio/ogg": ".ogg",
+    "audio/mp4": ".m4a",
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+}
+
+
+def _suffix_for(file: UploadFile) -> str:
+    base_type = (file.content_type or "").split(";")[0].strip().lower()
+    return _SUFFIX_BY_MIME.get(base_type, "")
 
 
 @router.post(
@@ -39,23 +67,65 @@ router = APIRouter(prefix="/api/transcriptions", tags=["transcriptions"])
         502: {"model": ErrorResponse},
     },
 )
+@limiter.limit(BILLABLE_RATE_LIMIT_HOUR)
+@limiter.limit(BILLABLE_RATE_LIMIT_DAY)
 async def transcribe_audio(
     request: Request,
     file: UploadFile,
-    duration: float = Form(...),
+    duration: float | None = Form(default=None),
 ):
     """Transcribe an uploaded audio file using OpenAI Whisper API.
 
     Flow:
-    1. Validate audio file (MIME type, duration, non-empty)
-    2. Verify an active (confirmed) template session exists
-    3. Send audio to Whisper API for transcription
-    4. Persist transcription session in database
-    5. Return transcription_id and transcribed text
+    1. Cheap upload checks (non-empty, byte ceiling, MIME type)
+    2. **Measure** the audio's real duration and validate it (ADR-0019)
+    3. Verify an active (confirmed) template session exists
+    4. Send audio to Whisper API for transcription
+    5. Persist transcription session in database
+    6. Return transcription_id and transcribed text
+
+    Args:
+        duration: The duration the CLIENT reports. Accepted for backward
+            compatibility and telemetry only — it is **never** used as a control.
+            Until ADR-0019 this field *was* the enforcement, which made the cap
+            fictional: a request could claim 5 s while carrying ten minutes of
+            audio and Whisper billed the ten. The number that matters now comes
+            from measuring the file.
     """
-    # 1. Validate audio file
+    # 1. Cheap checks first: never pay to decode an upload already known to be
+    #    invalid (the probe writes a temp file and spawns a process).
     validator = AudioValidator()
-    validation_result = validator.validate(file, duration)
+    upload_result = validator.validate_upload(file)
+
+    if not upload_result.is_valid:
+        raise HTTPException(
+            status_code=422,
+            detail=ErrorResponse(
+                detail=upload_result.detail or "Validation failed",
+                error_code=upload_result.error_code or "VALIDATION_ERROR",
+            ).model_dump(),
+        )
+
+    # 2. Measure the REAL duration from the bytes, then validate that measurement.
+    #    This is the trust boundary: everything the client said about this file is
+    #    now irrelevant.
+    file.file.seek(0)
+    audio_bytes = await file.read()
+
+    probe = AudioDurationProbe()
+    try:
+        measured_duration = await probe.measure_seconds(
+            audio_bytes, suffix=_suffix_for(file)
+        )
+    except AudioUnreadableError as e:
+        # Fail closed: an unmeasurable file is indistinguishable from one hiding an
+        # hour of audio, and we have not spent anything on it yet.
+        raise HTTPException(
+            status_code=422,
+            detail=ErrorResponse(detail=e.detail, error_code=e.error_code).model_dump(),
+        )
+
+    validation_result = validator.validate(file, measured_duration)
 
     if not validation_result.is_valid:
         raise HTTPException(
@@ -66,7 +136,7 @@ async def transcribe_audio(
             ).model_dump(),
         )
 
-    # 2. Verify active template session exists
+    # 3. Verify active template session exists
     pool = request.app.state.pool
     template_repo = TemplateRepository(pool)
     active_session = await template_repo.get_active_session()
@@ -80,9 +150,14 @@ async def transcribe_audio(
             ).model_dump(),
         )
 
-    # 3. Send audio to Whisper API
-    file.file.seek(0)
-    audio_bytes = await file.read()
+    # 4. Global spend ceiling (ADR-0019 §3). Checked HERE — immediately before the
+    #    only billable call in this handler — so a request rejected for any other
+    #    reason never pays a database round trip, and a blocked request never
+    #    reaches OpenAI.
+    budget = UsageBudget(UsageRepository(pool))
+    await budget.check()
+
+    # 5. Send audio to Whisper API (bytes already read for the probe in step 2)
     mime_type = file.content_type or "audio/webm"
 
     # The spoken language is the one fixed when the template was confirmed
@@ -117,15 +192,29 @@ async def transcribe_audio(
             ).model_dump(),
         )
 
-    # 4. Persist transcription session
+    # 6. Charge the ledger. AFTER the call, never before: a failed Whisper call
+    #    costs nothing and must not consume budget.
+    await budget.record(OPERATION_TRANSCRIPTION, session_id=active_session.id)
+
+    # 6b. Funnel: the "aha" moment (ADR-0019 §7). Idempotent in SQL, so the second
+    #     narration onward changes nothing. Best-effort — a telemetry write must
+    #     never cost the user a transcription they already paid for.
+    try:
+        await template_repo.mark_first_narration(str(active_session.id))
+    except Exception:
+        pass
+
+    # 7. Persist transcription session. We store the MEASURED duration, not the
+    #    client's claim — it is the value the cost was actually incurred on, so it
+    #    is also the one worth keeping for the usage ledger.
     transcription_repo = TranscriptionRepository(pool)
     transcription_id = await transcription_repo.create_session(
         template_session_id=active_session.id,
         text=text,
-        duration_seconds=duration,
+        duration_seconds=measured_duration,
     )
 
-    # 5. Return response
+    # 8. Return response
     return TranscribeResponse(
         transcription_id=transcription_id,
         text=text,

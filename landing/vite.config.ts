@@ -7,13 +7,24 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    // +01 = secondary frontend in voxa's 53xx block (~/Dev/PORTS.md), the role
+    // reserved for a landing/admin site. 5173 was Vite's default and clashed
+    // with both clocky and voxa's own app frontend.
+    port: 5301,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://localhost:5310', // +10 = backend
         changeOrigin: true,
       },
     },
+  },
+  // `vite preview` serves the production build; same role, same port (dev and
+  // preview never run at once). Without this it would default to 4173, outside
+  // the block.
+  preview: {
+    port: 5301,
+    strictPort: true,
   },
   test: {
     globals: true,

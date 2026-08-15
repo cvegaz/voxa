@@ -13,7 +13,7 @@ Quick reference for running Voxa with Docker.
 | Check running containers | `docker compose ps` |
 | Follow live logs (e.g. backend) | `docker compose logs -f backend` |
 
-Then open 👉 **http://localhost:8080**
+Then open 👉 **http://localhost:5300**
 
 ## Stop the app
 
@@ -59,8 +59,16 @@ What happens:
 
 ## Service URLs
 
+Voxa owns the **`53xx` block** in this machine's port registry
+(`~/Dev/PORTS.md`). Roles by offset: `+00` frontend, `+01` landing, `+10`
+backend, `+30` database. Never take a port outside the block — 5433/8080/5173
+belong to other projects, and Vite runs with `strictPort: true` so a collision
+fails loudly instead of hopping to the next free port.
+
 | Service | URL |
 |---------|-----|
-| Frontend (Nginx) | http://localhost:8080 |
-| Backend API docs (Swagger) | http://localhost:8000/docs |
-| PostgreSQL (DB client) | `localhost:5433` |
+| Frontend (Nginx, Docker) | http://localhost:5300 |
+| Frontend (Vite dev) | http://localhost:5300 |
+| Landing (Vite dev) | http://localhost:5301 |
+| Backend API docs (Swagger) | http://localhost:5310/docs |
+| PostgreSQL (DB client) | `localhost:5330` |

@@ -150,6 +150,20 @@ export const messages = {
     'footer.app': 'Probar la app',
     'footer.linkedin': 'LinkedIn',
     'footer.rights': 'Voxa · Proyecto de portafolio. Disponible para adaptaciones a medida.',
+
+    // Privacy notice (ADR-0019 §8) — the contact form collects personal data
+    'privacy.link': 'Aviso de privacidad',
+    'privacy.title': 'Aviso de privacidad',
+    'privacy.contactTitle': 'El formulario de contacto',
+    'privacy.contactBody':
+      'Si nos escribes, guardamos tu nombre, correo, empresa (si la pones) y tu mensaje, únicamente para responderte. No los compartimos ni los vendemos.',
+    'privacy.demoTitle': 'La demostración de Voxa',
+    'privacy.demoBody':
+      'La aplicación procesa voz y tiene su propio aviso de privacidad, disponible en su pie de página. Ahí se explica a dónde va el audio, qué se conserva y por cuánto tiempo.',
+    'privacy.rightsTitle': 'Tus derechos',
+    'privacy.rightsBody':
+      'Puedes pedir el acceso, la rectificación, la cancelación o la oposición al tratamiento de tus datos (derechos ARCO) escribiendo al correo de contacto. Responsable: Carlos Vega.',
+    'privacy.close': 'Cerrar',
   },
   en: {
     // Language switcher
@@ -287,5 +301,19 @@ export const messages = {
     'footer.app': 'Try the app',
     'footer.linkedin': 'LinkedIn',
     'footer.rights': 'Voxa · Portfolio project. Available for custom adaptations.',
+
+    // Privacy notice (ADR-0019 §8) — the contact form collects personal data
+    'privacy.link': 'Privacy notice',
+    'privacy.title': 'Privacy notice',
+    'privacy.contactTitle': 'The contact form',
+    'privacy.contactBody':
+      'If you write to us we store your name, email, company (if given) and your message, solely to reply to you. We do not share or sell them.',
+    'privacy.demoTitle': 'The Voxa demo',
+    'privacy.demoBody':
+      'The application processes voice and carries its own privacy notice, linked from its footer. It explains where the audio goes, what is kept, and for how long.',
+    'privacy.rightsTitle': 'Your rights',
+    'privacy.rightsBody':
+      'You may request access, rectification, cancellation, or object to the processing of your data by writing to the contact address. Data controller: Carlos Vega.',
+    'privacy.close': 'Close',
   },
 } satisfies Record<Language, Record<string, string>>;

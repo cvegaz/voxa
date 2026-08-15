@@ -15,6 +15,16 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
+# ffmpeg supplies `ffprobe`, which measures an uploaded recording's REAL duration
+# (ADR-0019). This is a hard runtime dependency of the cost control, not a
+# convenience: without it every transcription is rejected as unmeasurable, because
+# the validator fails closed. Placed BEFORE the pip layer so editing requirements
+# does not re-run apt.
+#   --no-install-recommends trims the dependency tree substantially.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 # Working directory inside the container. Everything else is relative to here.
 WORKDIR /app
 

@@ -1,5 +1,10 @@
 # Implementation plan — In-memory rows + on-demand Excel export
 
+> **Historical record — completed.** The "5 rows" cap throughout this document was
+> lowered to **3** by [ADR-0019](../adr/0019-public-demo-limits.md) §2 and made
+> configurable. The plan is kept as written, because a record of what was built
+> then is worth more than a record edited to look like today.
+
 Realizes **ADR-0013**. Replaces the per-row write-to-disk extraction path with an
 in-memory working set and a single on-demand export. TDD per ADR-0009: write or
 update the test alongside each change.

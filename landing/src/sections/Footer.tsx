@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useI18n } from '../i18n/LanguageContext';
 import { IconMic } from '../components/Icons';
+import { PrivacyNotice } from '../components/PrivacyNotice';
 import { LINKS } from '../config';
 import styles from './Footer.module.css';
 
 export function Footer() {
   const { t } = useI18n();
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   return (
     <footer className={styles.footer}>
@@ -33,10 +36,21 @@ export function Footer() {
               {t('footer.linkedin')}
             </a>
           )}
+          {/* A button, not an anchor: it opens a dialog rather than navigating,
+              and an <a href="#"> would misdescribe that to assistive tech. */}
+          <button
+            type="button"
+            className={styles.privacyLink}
+            onClick={() => setShowPrivacy(true)}
+          >
+            {t('privacy.link')}
+          </button>
         </nav>
       </div>
 
       <p className={styles.rights}>{t('footer.rights')}</p>
+
+      {showPrivacy && <PrivacyNotice onClose={() => setShowPrivacy(false)} />}
     </footer>
   );
 }

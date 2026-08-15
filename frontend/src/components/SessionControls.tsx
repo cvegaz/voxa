@@ -1,5 +1,6 @@
 import { IconDownload } from './Icons';
 import { useI18n } from '../i18n/LanguageContext';
+import { DemoLeadForm } from './DemoLeadForm';
 import styles from './SessionControls.module.css';
 
 export interface SessionControlsProps {
@@ -15,6 +16,8 @@ export interface SessionControlsProps {
   onFinalize: () => void;
   /** Download the current Excel */
   onDownload: () => void;
+  /** Session the capture belongs to, attached to a lead if one is left. */
+  sessionId?: string;
 }
 
 /**
@@ -32,6 +35,7 @@ export function SessionControls({
   isBusy,
   onFinalize,
   onDownload,
+  sessionId,
 }: SessionControlsProps) {
   const { t } = useI18n();
   const reachedCap = totalRows >= maxRows;
@@ -57,6 +61,16 @@ export function SessionControls({
             <IconDownload aria-hidden="true" />
             {t('session.download')}
           </button>
+
+          {/* The soft gate, AFTER the download button — beside the value, never
+              in front of it. Which of the two moments this is decides the copy
+              and the recorded capture point: hitting the cap is the higher-intent
+              one (they narrated and want more), finishing on their own terms is
+              the satisfied one. */}
+          <DemoLeadForm
+            capturePoint={reachedCap ? 'wall' : 'download'}
+            sessionId={sessionId}
+          />
         </div>
       ) : (
         <button

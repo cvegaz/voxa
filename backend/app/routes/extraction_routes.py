@@ -8,6 +8,17 @@ from fastapi.requests import Request
 from fastapi.responses import StreamingResponse
 
 from app.constants import MAX_ROWS_PER_SESSION
+from app.repositories import TemplateRepository, UsageRepository
+from app.services import (
+    OPERATION_EXTRACTION,
+    DemoBudgetExhaustedError,
+    UsageBudget,
+)
+from app.rate_limit import (
+    BILLABLE_RATE_LIMIT_DAY,
+    BILLABLE_RATE_LIMIT_HOUR,
+    limiter,
+)
 from app.models import (
     ColumnSchema,
     ExtractionErrorResponse,
@@ -47,6 +58,8 @@ router = APIRouter(prefix="/api/extraction", tags=["extraction"])
         502: {"model": ExtractionErrorResponse},
     },
 )
+@limiter.limit(BILLABLE_RATE_LIMIT_HOUR)
+@limiter.limit(BILLABLE_RATE_LIMIT_DAY)
 async def process_extraction(request: Request, body: ExtractionRequest):
     """Process a transcribed text through LLM extraction.
 
@@ -77,12 +90,39 @@ async def process_extraction(request: Request, body: ExtractionRequest):
         )
 
     # A finalized session is closed and accepts no more records (ADR-0013).
+    #
+    # WHY it closed changes what the user should be told, so the two cases get
+    # different codes even though the stored status is identical. The reason is
+    # DERIVED from the record count rather than stored: a session holding the full
+    # allowance was closed by the cap, anything less was closed by the user
+    # pressing Finalize. No extra column, no migration, no state to drift.
     if session["status"] == "finalized":
+        record_count = await repo.count_records(str(body.session_id))
+        hit_the_trial_cap = record_count >= MAX_ROWS_PER_SESSION
+
+        # Funnel: which wall stopped this visitor (ADR-0019 §7). 'trial' and
+        # 'budget' are very different stories — the first is a healthy visitor to
+        # convert, the second is a cap that may need widening.
+        if hit_the_trial_cap:
+            try:
+                await TemplateRepository(pool).mark_wall_hit(
+                    str(body.session_id), "trial"
+                )
+            except Exception:
+                pass
+
         raise HTTPException(
             status_code=422,
             detail=ExtractionErrorResponse(
-                detail="La sesión ya fue finalizada y no admite más registros.",
-                error_code="SESSION_FINALIZED",
+                detail=(
+                    "Alcanzaste el límite de narraciones de la prueba. "
+                    "Puedes descargar lo que ya capturaste."
+                    if hit_the_trial_cap
+                    else "La sesión ya fue finalizada y no admite más registros."
+                ),
+                error_code=(
+                    "TRIAL_EXHAUSTED" if hit_the_trial_cap else "SESSION_FINALIZED"
+                ),
             ).model_dump(),
         )
 
@@ -95,6 +135,20 @@ async def process_extraction(request: Request, body: ExtractionRequest):
                 error_code="SESSION_NOT_CONFIRMED",
             ).model_dump(),
         )
+
+    # Global spend ceiling (ADR-0019 §3), immediately before the billable call.
+    budget = UsageBudget(UsageRepository(pool))
+    try:
+        await budget.check()
+    except DemoBudgetExhaustedError:
+        # Funnel: record WHICH wall stopped them before letting the global
+        # handler turn this into a 429 (ADR-0019 §7). A month full of 'budget'
+        # walls means the caps are too tight for the traffic that arrived.
+        try:
+            await TemplateRepository(pool).mark_wall_hit(str(body.session_id), "budget")
+        except Exception:
+            pass
+        raise
 
     # Build orchestrator with all dependencies
     orchestrator = ExtractionOrchestrator(
@@ -134,6 +188,11 @@ async def process_extraction(request: Request, body: ExtractionRequest):
                 error_code="DATABASE_ERROR",
             ).model_dump(),
         )
+
+    # Charge only a call that actually happened. Placed outside the try above on
+    # purpose: that block ends in a bare `except Exception` that would turn a
+    # ledger failure into a misleading "DATABASE_ERROR" about the extraction.
+    await budget.record(OPERATION_EXTRACTION, session_id=body.session_id)
 
     return result
 
@@ -268,6 +327,14 @@ async def export_excel(request: Request, session_id: UUID):
     row_dicts = [rec["record_json"] for rec in records]
 
     content = ExcelExporter().build(schema, row_dicts)
+
+    # Funnel: the conversion this whole product exists to produce (ADR-0019 §7).
+    # Idempotent in SQL — re-downloading is normal and must not read as a second
+    # conversion. Best-effort: telemetry never blocks the file.
+    try:
+        await TemplateRepository(pool).mark_downloaded(str(session_id))
+    except Exception:
+        pass
 
     file_name = context["file_name"] or "export.xlsx"
     headers = {"Content-Disposition": f'attachment; filename="{file_name}"'}

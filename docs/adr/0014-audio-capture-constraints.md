@@ -1,7 +1,11 @@
 # 0014. Audio capture constraints (recording length and input quality)
 
 - **Date**: 2026-06-29
-- **Status**: Accepted
+- **Status**: Accepted — **amended by [ADR-0019](0019-public-demo-limits.md)**
+  (2026-08-14). The 20 s cap below stands: ADR-0019 re-examined it and kept it.
+  What is amended is the *enforcement* — the server validated a client-reported
+  duration rather than the file, so the "both layers" intent below was never
+  realized in code. ADR-0019 replaces that with a measurement of the audio itself.
 
 ## Context
 

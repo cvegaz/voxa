@@ -3,7 +3,8 @@
 > **⚠️ Partly superseded by [ADR-0013](../../../docs/adr/0013-in-memory-rows-on-demand-excel-export.md).**
 > The original design wrote the `.xlsx` to disk and overwrote it after every row
 > (needing a `file_path`). That path was replaced: records are kept in the
-> database (single source of truth), the session closes on **Finalize or 5 rows**,
+> database (single source of truth), the session closes on **Finalize or the
+> configured row cap** (3 since [ADR-0019](../../../docs/adr/0019-public-demo-limits.md) §2),
 > and the final `.xlsx` is **rebuilt in memory from the schema on download** —
 > with only a column-name header (no `Tipo_Dato`/`Ejemplo_Valor` rows) and no
 > server-side file. Where this document says "saved/overwritten on disk",

@@ -11,6 +11,116 @@ Voxa. **Voxa-specific pre-deploy work**: limit the public demo — per-visitor
 (per-IP) rate limit AND a global per-day operation budget, plus the OpenAI
 spending cap, so the free test cannot drain the API account.
 
+**Status 2026-08-14** — pps has been live on this pattern since 2026-08-08, so
+every artifact below already exists and works in `../playpro_stats`. Voxa's turn
+is split in two tracks:
+
+### Track 1 — Demo limits (the gate that makes public exposure safe)
+
+Decided and specified: **[ADR-0019](docs/adr/0019-public-demo-limits.md)** +
+**[plan](docs/plans/0019-public-demo-limits.md)**. Headline decisions: recording
+cap **stays 20 s** but is **measured server-side** with `ffprobe` and stated in the
+UI (the client-reported duration was never a real control); anonymous trial =
+**1 template + 3 narrations**; spend
+ceiling **USD $10/month** ($7 operating, $3 manual headroom, ~$0.45/day) counted in
+operations priced by configured unit costs; per-IP **10/hour, 20/day** on billable
+endpoints; email captured as a soft gate that **grants no quota**; capability
+detection instead of browser sniffing; **every cap is configuration**, so monthly
+tuning is an `.env` edit. Privacy notice is a release blocker.
+
+### Track 2 — Production (harvest the pps pattern, do not reinvent)
+
+Voxa still lacks the production packaging that pps already proved. Each item below
+has a working counterpart to copy and adapt:
+
+- [ ] `landing/Dockerfile` + `landing/nginx.conf` — Voxa's `landing/` has neither
+      (pps: `landing/Dockerfile`, static nginx, no `/api` proxy).
+- [ ] `docker-compose.prod.yml` — Postgres with **no published port**, backend,
+      frontend, landing, Caddy as the only public entry (pps has it).
+- [ ] `deploy/Caddyfile` — automatic HTTPS + shared security headers (pps has it;
+      its comments already anticipate Voxa joining by hostname).
+- [ ] `.env.production.example` — every production variable, no real values.
+- [ ] `.github/workflows/docker-publish.yml` — multi-arch build → GHCR → deploy via
+      AWS SSM with OIDC (no stored keys, no inbound SSH). pps's version is
+      directly adaptable.
+- [ ] Terraform for Voxa — same modules, **its own state key** (`voxa/stage1`) and
+      `Project=voxa` cost tag, per the account-governance decision in the shared
+      plan. **Open decision: own EC2 (isolates pps, which serves a paying client,
+      from Voxa deploys) vs. the same host (cheaper, shared Caddy and restart).**
+- [ ] Domain — **not purchased yet**, deliberately: bought when everything else is
+      ready to go live.
+- [ ] `LANDING_ORIGINS`, strong `POSTGRES_PASSWORD`, decide whether `/docs` stays
+      public.
+- [ ] Daily `pg_dump` to S3 with one restore drill; uptime monitor; billing alarm.
+
+### Track 4 — Landing & distribution (the month depends on this more than on the limits)
+
+> The demo limits make the month **safe**; the funnel instrumentation makes it
+> **readable**. Neither makes it **happen**. The realistic failure mode of the
+> whole exercise is not a runaway bill — the $10 ceiling holds — it is finishing
+> the month with six sessions and concluding the product does not interest
+> anyone, when what was missing was traffic. Items 1–3 below are already listed
+> in Phase B.4; they are repeated here because their priority is wrong down
+> there.
+
+- [ ] **`og-image.png` in `landing/public/`** — the folder holds only
+      `favicon.svg` and `robots.txt` today, so any share on LinkedIn or WhatsApp
+      renders a blank card. The single cheapest fix with the highest reach.
+- [ ] **Fill `landing/.env`** — `VITE_GITHUB_URL` still defaults to the
+      placeholder `https://github.com/tu-usuario/voxa`, i.e. the landing
+      currently links to a repo that does not exist. Also the deployed app URL,
+      LinkedIn, and contact email.
+- [ ] **Record the demo GIF/video** — and drop it at `docs/assets/demo.gif`,
+      which the README already references and which **does not exist**, so the
+      public repo opens with a broken image (see Phase 8 of the ADR-0019 plan).
+- [ ] **Decide where the landing gets published** — a marketing site nobody links
+      to is a marketing site nobody sees. Concrete channels beat "we'll share it":
+      the GitHub profile README, a LinkedIn post built from the ADRs (the
+      engine-extraction story is written already), and the pps case study.
+- [ ] Set backend `LANDING_ORIGINS` to the real landing origin once it is live.
+
+### Track 3 — Repo hygiene (found 2026-08-14, do before deploying)
+
+> Three defects found while executing Track 1. None blocks local development;
+> all three are the kind of thing a reviewer notices in a public repo whose
+> selling point is engineering discipline. They share a fix shape: **the
+> verification must run in CI, or it does not exist.**
+
+- [ ] **`npm run lint` is a phantom command.** `frontend/package.json` (and
+      `landing/`) declare `"lint": "eslint ."`, `CLAUDE.md` documents it, and
+      **none of it is real**: `eslint` is not in `devDependencies`, there is no
+      config file (`eslint.config.js` / `.eslintrc`), and `ci.yml` never invokes
+      it — which is exactly why nobody noticed. Fix: install `eslint` +
+      `typescript-eslint` + the React plugins in both apps, write the flat
+      config, **triage the findings by hand** (do not run `--fix` blindly), and
+      wire it into CI. Highest-value rule for this codebase is
+      `react-hooks/exhaustive-deps`: the components are full of `useCallback`
+      dependency arrays, and a wrong one produces a stale closure that `tsc`
+      cannot see and the tests may not catch.
+- [ ] **The test suite has a hidden dependency on `OPENAI_API_KEY`.** The 5 tests
+      in `test_extraction_process_endpoint.py` fail whenever that variable is
+      absent — verified against a clean worktree at HEAD, exception traced to
+      `openai.OpenAIError: Missing credentials`. Cause: `process_extraction`
+      constructs `LLMExtractionService()` **inline**, whose constructor builds a
+      real `AsyncOpenAI` client, and the tests patch `ExtractionOrchestrator` and
+      `ExtractionRepository` but not that service. No OpenAI call is ever made —
+      merely *constructing* the client requires a key. **`.github/workflows/ci.yml`
+      sets no environment variables**, so CI hits this too. This contradicts the
+      offline-suite guarantee in `CLAUDE.md`, and it hides behind any developer
+      machine that happens to have a key exported. Fix: patch
+      `LLMExtractionService` (and its siblings) in those tests, or move the
+      construction behind the injection seam the other services already use.
+- [ ] **No dependency pinning.** `backend/requirements.txt` uses `>=` with no
+      lockfile, so a fresh install — and **the production Docker image** — resolves
+      to whatever versions exist on build day: two builds of the same commit can
+      differ. Independent of the item above, but it is what makes such breakage
+      arrive silently and undated. Fix: pin exact versions or adopt a lockfile.
+- [ ] **Two migrations numbered `006`** (`006_add_session_language.sql`,
+      `006_create_contact_messages.sql`). They apply fine today because the
+      runner sorts by filename, but the numbering no longer expresses order and a
+      rollback will bite. Fix: renumber one to `007` and shift the new migrations
+      of Track 1 accordingly.
+
 ## Pending discussion and implementation
 
 ### 1. Record review & editing
@@ -72,8 +182,12 @@ spending cap, so the free test cannot drain the API account.
 - **Docs**: ✅ ADR-0017 (per-session language + locale formatting), plus README and CLAUDE.md notes.
 
 ### 9. Tier-based recording limit
-- The max audio recording length is currently **20s** (free tier), enforced both
-  client-side (auto-stop in `AudioRecorder`) and server-side (`AudioValidator`).
+- The max audio recording length is **20s** — ADR-0019 re-examined it and **kept**
+  ADR-0014's value (10s would truncate legitimate narrations: one record with a date
+  and a phone number takes 15–20s to dictate). Enforced client-side as UX (auto-stop
+  in `AudioRecorder`, now with a visible countdown and a final-stretch warning) and
+  server-side as the real control (`AudioValidator` + a measurement of the file, not
+  the client-reported duration).
 - The limit is already configurable (a `maxDurationSeconds` prop on the recorder
   and a `max_duration_seconds` constructor arg on the validator, both defaulting
   to `MAX_AUDIO_DURATION_SECONDS` in `app/constants.py`).
@@ -196,21 +310,40 @@ spending cap, so the free test cannot drain the API account.
 - [ ] Production `DATABASE_URL` separate from the dev one
 
 ### C.2 Cost and abuse control (because you pay for every call)
+
+> All of this is now specified in **[ADR-0019](docs/adr/0019-public-demo-limits.md)**
+> and its **[plan](docs/plans/0019-public-demo-limits.md)** — Track 1 above.
+
 - [~] Rate limiting in the backend (requests per IP/user per minute) — `slowapi` is
   now wired (`app/rate_limit.py`) and applied to `POST /api/contact`. Still pending:
-  extend it to the OpenAI-spending endpoints (transcribe/extract).
-- [ ] Size and duration limits for accepted audio in `transcription_routes.py`
-- [ ] Authentication / login (even a basic one) so that the service is NOT anonymous and open
-- [ ] Keep the monthly OpenAI spending cap active
+  extend it to the OpenAI-spending endpoints (transcribe/extract/confirm), **and
+  resolve the client IP from the forwarded header** — behind Caddy the default
+  `get_remote_address` puts every visitor in one bucket.
+- [ ] Size and duration limits for accepted audio in `transcription_routes.py` —
+  note the duration is currently taken from a **client-supplied form field**, so
+  the ADR-0014 cap is not actually enforced. Needs a byte cap plus a real
+  measurement of the file.
+- [ ] Global spend ledger with daily **and** monthly ceilings (a monthly-only cap
+  can be drained in one night).
+- [~] Authentication / login — **deliberately deferred**: verified email needs a
+  sending domain that is not purchased yet. The demo stays anonymous, with the
+  limits above standing in for identity. Accounts remain the freemium's first
+  step (#11).
+- [ ] Keep the monthly OpenAI spending cap active (last line of defense, outside
+  the app)
 
 ### C.3 Network exposure
 - [ ] HTTPS required (most hosts provide it for free with a domain)
-- [ ] Do NOT expose Postgres (5433) or the backend (8000) directly to the internet; only the frontend/proxy is public
+- [ ] Do NOT expose Postgres (5330) or the backend (5310) directly to the internet; only the frontend/proxy is public
 - [ ] CORS locked down to the real frontend origins
 - [ ] Review security headers and disable the public Swagger `/docs` if you do not want it
 
 ### C.4 Privacy (the app processes voice = personal data)
-- [ ] Privacy notice: what is done with the audio, that it is sent to OpenAI, whether or not it is stored
+
+> **Release blocker, not backlog** (ADR-0019 §8): capturing an email alongside voice
+> makes the data identifiable, so the notice must exist before the demo is public.
+
+- [ ] Privacy notice (ES/EN): what is done with the audio, that it is sent to OpenAI, whether or not it is stored, and what the captured email is used for
 - [ ] Decide and document whether the audio is deleted after processing or persisted
 - [ ] Review what is stored in the `excel_data` volume and for how long
 

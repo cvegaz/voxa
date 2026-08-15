@@ -4,6 +4,7 @@ import { SchemaConfirmation } from './components/SchemaConfirmation';
 import { ContextInput } from './components/ContextInput';
 import { TranscriptionPage } from './components/TranscriptionPage';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { PrivacyNotice } from './components/PrivacyNotice';
 import { IconMic } from './components/Icons';
 import { useI18n } from './i18n/LanguageContext';
 import { templateApi } from './services/templateApi';
@@ -27,6 +28,9 @@ export function App() {
   // We keep the upload response so we can pass schema/sessionId to the
   // following steps of Module 1.
   const [upload, setUpload] = useState<UploadResponse | null>(null);
+  // The privacy notice is reachable from every step, including the one where the
+  // microphone is about to be used — the step where it matters most.
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   // --- On mount: does a confirmed session already exist? ---
   // This way, if the user reloads the page after having confirmed an Excel
@@ -139,8 +143,20 @@ export function App() {
           {step === 'transcription' && <TranscriptionPage />}
         </div>
 
-        <footer className={styles.footer}>{t('app.footer')}</footer>
+        <footer className={styles.footer}>
+          {t('app.footer')}
+          {' · '}
+          <button
+            type="button"
+            className={styles.privacyLink}
+            onClick={() => setShowPrivacy(true)}
+          >
+            {t('privacy.link')}
+          </button>
+        </footer>
       </div>
+
+      {showPrivacy && <PrivacyNotice onClose={() => setShowPrivacy(false)} />}
     </main>
   );
 }

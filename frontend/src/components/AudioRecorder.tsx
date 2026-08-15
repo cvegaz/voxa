@@ -162,14 +162,6 @@ export function AudioRecorder({
   const streamRef = useRef<MediaStream | null>(null);
   const mimeTypeRef = useRef<string>('');
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopTimer();
-      stopMediaStream();
-    };
-  }, []);
-
   const stopTimer = useCallback(() => {
     if (timerRef.current !== null) {
       clearInterval(timerRef.current);
@@ -183,6 +175,21 @@ export function AudioRecorder({
       streamRef.current = null;
     }
   }, []);
+
+  // Cleanup on unmount: stop the timer and release the microphone.
+  //
+  // Declared AFTER the two callbacks it uses, and depending on them. It used to
+  // sit above them with an empty dependency array, which worked only by
+  // accident — the effect body runs after render, so the consts happen to be
+  // assigned by then. With the real dependencies listed the intent is checkable,
+  // and because both callbacks are `useCallback([], …)` their identity never
+  // changes, so this still runs exactly once on unmount.
+  useEffect(() => {
+    return () => {
+      stopTimer();
+      stopMediaStream();
+    };
+  }, [stopTimer, stopMediaStream]);
 
   const startTimer = useCallback(() => {
     startTimeRef.current = Date.now();

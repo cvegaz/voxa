@@ -39,7 +39,7 @@ On startup, the backend applies migrations (`scripts/migrate.py`) before serving
 ### Backend locally (without Docker)
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime + test tooling
 python scripts/migrate.py                       # applies migrations/*.sql
 uvicorn app.main:app --reload --port 5310
 pytest                                           # runs the full suite (testpaths=tests)
@@ -53,7 +53,7 @@ npm install
 npm run dev        # Vite on :5300 (strictPort), proxy /api → localhost:5310
 npm test           # vitest run
 npm run build      # tsc -b && vite build
-npm run lint       # eslint
+npm run lint       # eslint (flat config; also runs in CI, in both frontend/ and landing/)
 ```
 
 ## Backend architecture (by layers)
@@ -64,7 +64,7 @@ npm run lint       # eslint
 - **`services/`** — business logic. All of the domain lives here (whisper, LLM extraction/enrichment, validators, excel_writer, orchestrator, prompt_builder, response_parser…).
 - **`repositories/`** — data access (Postgres via `asyncpg`).
 - **`models/`** — Pydantic models / data schemas.
-- **`migrations/`** — versioned SQL (`00N_*.sql` + its `_rollback.sql`). Applied with `scripts/migrate.py`.
+- **`migrations/`** — versioned SQL (`00N_*.sql` + its `_rollback.sql`). Applied with `scripts/migrate.py`, which sorts by filename and records each applied file. **Numbers must be unique**: the runner refuses to start if two migrations share one (it happened once, silently, because sorting by filename is deterministic and hid it). Take the next free number; never reuse or renumber a migration that a live database has already applied.
 
 The OpenAI services (`whisper_service`, `llm_extraction_service`, `llm_enrichment_service`) take an optional `AsyncOpenAI` client in the constructor; if it is `None`, they create one with `OPENAI_API_KEY`. **Keep this pattern** — it is what allows injecting a mock in the tests.
 
@@ -74,6 +74,33 @@ The OpenAI services (`whisper_service`, `llm_extraction_service`, `llm_enrichmen
 - **The `/api` proxy.** The frontend calls relative `/api/...` routes (never absolute URLs to the backend). This is resolved by the Vite proxy in dev (`vite.config.ts`) and Nginx in prod (`frontend/nginx.conf`). See the comment about `proxy_pass` without a trailing `/`.
 - **TDD / tests first.** There is a broad suite (pytest + hypothesis in the backend, vitest in the frontend). Every service and endpoint has its test. When touching logic, update or add the corresponding test; do not leave functionality uncovered.
 - **OpenAI errors** are translated into domain exceptions (`exceptions.py`: `LLMUnavailableError`, `LLMInvalidResponseError`, etc.) with retries for transient errors (connection/timeout/5xx). Follow that pattern when adding LLM calls.
+
+## Dependencies are pinned — never edit `requirements.txt` by hand
+
+`backend/` uses the abstract/concrete split:
+
+| File | Role |
+|---|---|
+| `requirements.in` | **Hand-written.** Direct runtime deps and the intent behind each bound. |
+| `requirements-dev.in` | **Hand-written.** `-r requirements.in` plus the test tooling. |
+| `requirements.txt` | **Generated.** Every version pinned, transitives included. Installed by the Dockerfile. |
+| `requirements-dev.txt` | **Generated.** Same plus test deps. Installed by CI and locally. |
+
+To change a dependency, edit the `.in` file and regenerate **both**:
+
+```bash
+cd backend
+.venv/bin/pip-compile --strip-extras requirements.in
+.venv/bin/pip-compile --strip-extras requirements-dev.in
+```
+
+Why it matters: before this, `openai>=1.6.0` silently resolved to **3.0.0** on a
+fresh install — a version that raises from the client constructor — and CI went
+red weeks after the code was written, with no commit to blame. Unpinned ranges
+mean two builds of the same commit can differ, **including the production image**.
+
+The `openai` bound is capped below the next major on purpose: a major bump must be
+adopted deliberately, with the real API exercised, not picked up by a rebuild.
 
 ## Public demo limits (ADR-0019) — read this before touching a cap
 

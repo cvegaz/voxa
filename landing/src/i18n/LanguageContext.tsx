@@ -1,3 +1,9 @@
+/* eslint-disable react-refresh/only-export-components --
+ * Provider and its hook in one module: the standard React context shape. The
+ * rule flags it because co-locating them coarsens Fast Refresh granularity in
+ * dev — a nicety not worth the coupling a split would introduce. Same decision
+ * as the app's LanguageContext, where the reasoning is spelled out in full.
+ */
 import {
   createContext,
   useCallback,

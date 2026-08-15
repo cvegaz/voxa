@@ -1,0 +1,37 @@
+# Runtime dependencies — DIRECT ones only, with the intent behind each bound.
+#
+# This file is hand-written; `requirements.txt` is GENERATED from it and pins
+# every version, transitive dependencies included. Never edit requirements.txt
+# by hand — regenerate it:
+#
+#     .venv/bin/pip-compile requirements.in
+#     .venv/bin/pip-compile requirements-dev.in
+#
+# Why the split (abstract vs. concrete dependencies): this file says what the
+# project needs and why; the generated one says exactly what to install. Without
+# the second, `>=` means a fresh install resolves to whatever exists on build
+# day, and two builds of the same commit can differ. That is not theoretical —
+# `openai>=1.6.0` quietly resolved to 3.0.0, which raises from the client
+# constructor and broke CI weeks after the code was written.
+
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
+python-dotenv>=1.0.0
+
+# Excel handling
+openpyxl>=3.1.0
+pandas>=2.1.0
+
+# Database
+asyncpg>=0.29.0
+
+# Rate limiting for the public demo endpoints (ADR-0019 §3)
+slowapi>=0.1.9
+
+# AI. Capped below the next major on purpose: 2.x moved credential validation
+# into the client constructor, and a major bump is exactly the kind of change
+# that must be adopted deliberately, with the real API exercised, rather than
+# picked up by an unattended rebuild.
+openai>=3.0.0,<4.0.0

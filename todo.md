@@ -342,6 +342,82 @@ Each item below had a working pps counterpart to adapt:
       migrations share a number — verified by planting a duplicate. A fresh
       database applies 001→010 cleanly.
 
+### Track 5 — Observability (opened 2026-08-15, now that it is live)
+
+> Voxa is in production with **no health endpoint, no logging configuration and
+> no metrics**. The stack runs and `docker compose ps` says five services are
+> up — which answers "are the processes alive", a question nobody was asking.
+> The failure modes below all share a shape: **the app keeps answering 200 while
+> silently doing nothing useful.** Ordered by cost-to-value, cheapest first.
+
+- [ ] **Health endpoint that validates dependencies** — the highest value of the
+      three, and the smallest.
+
+      Separate **liveness** from **readiness**; they answer different questions
+      and conflating them is actively harmful. Liveness = "is the process
+      wedged, should something restart me?". Readiness = "can I actually serve a
+      request right now?". If a readiness failure triggers a restart, a database
+      outage becomes a restart loop — restarting has never fixed an unreachable
+      database.
+
+      What readiness must check here, and why each one is a real silent failure:
+
+      - **ffprobe on PATH.** It is a hard runtime dependency of the ADR-0019
+        cost control, and `AudioDurationProbe` **fails closed**: without it every
+        upload is rejected as unmeasurable. The app boots fine, answers 200, and
+        rejects 100% of narrations. Today nothing would tell you but a user
+        complaining.
+      - **The database.** Reachable and accepting a trivial query.
+      - **`OPENAI_API_KEY` present** — *presence only*. Do **not** call OpenAI
+        from a probe: a health check that costs money on every poll is a bill
+        that scales with your monitoring interval. Check configuration; let the
+        first real request discover an invalid key.
+
+      Then wire it up, because an endpoint nobody reads is decoration: a
+      `healthcheck:` on the backend service in `docker-compose.prod.yml`, and
+      `depends_on: condition: service_healthy` where it matters. The db already
+      has one; the backend, frontend and landing have none.
+
+- [ ] **Structured logging (JSON lines) with a request id** — the substrate the
+      other two stand on.
+
+      Today both apps use uvicorn's default text output and there is no logging
+      configuration at all, so the only tool is grepping five containers by
+      hand. Two concrete gains: JSON lines are queryable with `jq` without
+      shipping them anywhere, and a **correlation id propagated through the
+      pipeline** (transcribe → extract → confirm) turns one narration's whole
+      journey into a single query instead of a timestamp-matching exercise
+      across three log lines.
+
+      **Hard constraint: never log the narration text, the audio, or extracted
+      field values.** This is a public demo processing strangers' voice data
+      under a privacy notice that promises limits, and a log file is storage
+      like any other — logging the content would quietly contradict the notice.
+      Log the *shape*: duration, byte size, field count, latency, outcome.
+      Same for the API key, obviously.
+
+      Scale note: on one $20/month box, JSON to stdout plus `docker compose logs`
+      is probably enough. Shipping to CloudWatch or Loki is a later decision with
+      a real cost, not a default.
+
+- [ ] **Metrics** — deliberately last, because much of what matters is already
+      captured and the infrastructure is the expensive part.
+
+      `scripts/funnel_report.py` already answers the business questions
+      (sessions, aha rate, walls, spend, cost per lead) straight from Postgres.
+      What it cannot answer is **operational**: latency and error rate per
+      pipeline stage (Whisper / extraction / enrichment), rate-limit rejections,
+      and how fast the spend ledger is filling — the last one being the
+      difference between noticing a budget wall on the day and noticing it at
+      month end.
+
+      Weigh the stack before installing one. Prometheus + Grafana on a 2 GB
+      instance already running Postgres and five containers is a real tenant,
+      not a sidecar. Cheaper first steps that may be sufficient: a `/metrics`
+      endpoint that nothing scrapes yet, or CloudWatch (the AWS account exists),
+      or simply deriving these from the structured logs above. Decide by what
+      you would actually look at weekly.
+
 ## Pending discussion and implementation
 
 ### 1. Record review & editing

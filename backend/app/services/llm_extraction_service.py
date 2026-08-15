@@ -23,12 +23,34 @@ class LLMExtractionService:
         """Initialize with an optional pre-configured OpenAI client.
 
         Args:
-            client: An AsyncOpenAI client instance. If None, a new client
-                    is created using the OPENAI_API_KEY env variable.
+            client: An AsyncOpenAI client instance. If None, one is created
+                    **lazily** on first use from the OPENAI_API_KEY env variable.
+
+        The laziness matters. ``openai>=2`` raises ``OpenAIError: Missing
+        credentials`` from the client CONSTRUCTOR, so building the client eagerly
+        made merely *instantiating* this service require a key — even when no call
+        would ever be made. The routes construct their services up front, so a test
+        that mocked the orchestrator still exploded, and CI (which sets no
+        environment variables) failed while every developer machine with a key
+        exported passed. That violates the offline-suite guarantee of ADR-0009.
+
+        Deferring construction to the first call means a missing key fails where it
+        is actually a problem — at the moment of the API call — with the same error,
+        and never where it is not.
         """
-        self._client = client or openai.AsyncOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-        )
+        self._explicit_client = client
+        self._lazy_client: openai.AsyncOpenAI | None = None
+
+    @property
+    def _client(self) -> openai.AsyncOpenAI:
+        """The injected client, or one built on first use."""
+        if self._explicit_client is not None:
+            return self._explicit_client
+        if self._lazy_client is None:
+            self._lazy_client = openai.AsyncOpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY", ""),
+            )
+        return self._lazy_client
 
     def _is_transient_error(self, error: Exception) -> bool:
         """Determine if an error is transient and worth retrying.

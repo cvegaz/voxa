@@ -42,12 +42,24 @@ class WhisperTranscriptionService:
         """Initialize with an optional pre-configured OpenAI async client.
 
         Args:
-            client: An AsyncOpenAI client instance. If None, a new client
-                    is created using the OPENAI_API_KEY env variable.
+            client: An AsyncOpenAI client instance. If None, one is created
+                    **lazily** on first use from the OPENAI_API_KEY env variable.
+                    See ``LLMExtractionService.__init__`` for why the laziness is
+                    load-bearing rather than a micro-optimisation.
         """
-        self._client = client or openai.AsyncOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-        )
+        self._explicit_client = client
+        self._lazy_client: openai.AsyncOpenAI | None = None
+
+    @property
+    def _client(self) -> openai.AsyncOpenAI:
+        """The injected client, or one built on first use."""
+        if self._explicit_client is not None:
+            return self._explicit_client
+        if self._lazy_client is None:
+            self._lazy_client = openai.AsyncOpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY", ""),
+            )
+        return self._lazy_client
 
     def _get_filename(self, mime_type: str) -> str:
         """Get the appropriate filename with extension for the given MIME type.

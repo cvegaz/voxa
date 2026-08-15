@@ -97,24 +97,24 @@ has a working counterpart to copy and adapt:
       `react-hooks/exhaustive-deps`: the components are full of `useCallback`
       dependency arrays, and a wrong one produces a stale closure that `tsc`
       cannot see and the tests may not catch.
-- [ ] **The test suite has a hidden dependency on `OPENAI_API_KEY`.** The 5 tests
-      in `test_extraction_process_endpoint.py` fail whenever that variable is
-      absent — verified against a clean worktree at HEAD, exception traced to
-      `openai.OpenAIError: Missing credentials`. Cause: `process_extraction`
-      constructs `LLMExtractionService()` **inline**, whose constructor builds a
-      real `AsyncOpenAI` client, and the tests patch `ExtractionOrchestrator` and
-      `ExtractionRepository` but not that service. No OpenAI call is ever made —
-      merely *constructing* the client requires a key. **`.github/workflows/ci.yml`
-      sets no environment variables**, so CI hits this too. This contradicts the
-      offline-suite guarantee in `CLAUDE.md`, and it hides behind any developer
-      machine that happens to have a key exported. Fix: patch
-      `LLMExtractionService` (and its siblings) in those tests, or move the
-      construction behind the injection seam the other services already use.
+- [x] ~~**The test suite has a hidden dependency on `OPENAI_API_KEY`.**~~ **FIXED
+      2026-08-14** (confirmed live: the first CI run of the demo-limits PR failed
+      on exactly this). `openai>=2` raises `OpenAIError: Missing credentials` from
+      the client **constructor**, and the routes build their services eagerly — so
+      a test that mocked the orchestrator and never intended to call OpenAI still
+      exploded. `ci.yml` sets no environment variables, so CI failed while every
+      developer machine with a key exported passed. Fix: the three OpenAI services
+      now build their client **lazily**, on first use, preserving the injection
+      seam. `tests/test_offline_suite.py` asserts the property directly, so a
+      future service that constructs eagerly is caught locally instead of in CI.
 - [ ] **No dependency pinning.** `backend/requirements.txt` uses `>=` with no
-      lockfile, so a fresh install — and **the production Docker image** — resolves
-      to whatever versions exist on build day: two builds of the same commit can
-      differ. Independent of the item above, but it is what makes such breakage
-      arrive silently and undated. Fix: pin exact versions or adopt a lockfile.
+      lockfile, so a fresh install — and **the production Docker image** —
+      resolves to whatever versions exist on build day: two builds of the same
+      commit can differ. Not theoretical: the pin says `openai>=1.6.0` and a fresh
+      install resolved to **3.0.0**, two major versions on, which is what made the
+      constructor start raising. The lazy-client fix removed the symptom; the
+      unpinned dependency is still the mechanism by which the next one arrives
+      silently and undated. Fix: pin exact versions or adopt a lockfile.
 - [ ] **Two migrations numbered `006`** (`006_add_session_language.sql`,
       `006_create_contact_messages.sql`). They apply fine today because the
       runner sorts by filename, but the numbering no longer expresses order and a

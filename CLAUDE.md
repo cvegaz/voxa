@@ -53,7 +53,7 @@ npm install
 npm run dev        # Vite on :5300 (strictPort), proxy /api → localhost:5310
 npm test           # vitest run
 npm run build      # tsc -b && vite build
-npm run lint       # eslint
+npm run lint       # eslint (flat config; also runs in CI, in both frontend/ and landing/)
 ```
 
 ## Backend architecture (by layers)

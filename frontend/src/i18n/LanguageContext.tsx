@@ -1,3 +1,15 @@
+/* eslint-disable react-refresh/only-export-components --
+ * This file exports a component (LanguageProvider) alongside non-components
+ * (useI18n, localized, getCurrentLanguage), which the rule flags because it
+ * coarsens Vite's Fast Refresh granularity in dev.
+ *
+ * Kept together on purpose. It is the standard React context shape — provider
+ * and its hook in one module — and the three exports share the module-level
+ * `currentLanguage` mirror that lets non-React code (API error mappers, which
+ * run outside the component tree) localize. Splitting them would mean exporting
+ * that mutable state across a module boundary: real coupling, added to buy back
+ * a dev-server nicety. The warning is acknowledged rather than obeyed.
+ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {

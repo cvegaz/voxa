@@ -56,6 +56,35 @@ async def connect_with_retry(retries: int = 15, delay: float = 2.0) -> asyncpg.C
     raise SystemExit(f"No se pudo conectar a la base de datos: {last_error}")
 
 
+def _assert_unique_numbers(files: list[Path]) -> None:
+    """Refuse to run when two migrations share a version number.
+
+    This happened once (two files numbered 006, renumbered 2026-08-14). Nothing
+    broke, because the runner sorts by filename and that is deterministic — which
+    is exactly why it went unnoticed. The damage is to the things numbers are FOR:
+    a number that identifies two files cannot express order, and a rollback has to
+    guess which one was meant.
+
+    Failing here rather than warning is deliberate. A warning in migration output
+    is read once and never again; this is the last moment before the schema
+    changes, and the fix (rename the newer file) costs seconds.
+    """
+    by_number: dict[str, list[str]] = {}
+    for path in files:
+        number = path.name.split("_", 1)[0]
+        by_number.setdefault(number, []).append(path.name)
+
+    duplicates = {n: names for n, names in by_number.items() if len(names) > 1}
+    if duplicates:
+        detail = "; ".join(
+            f"{number}: {', '.join(names)}" for number, names in sorted(duplicates.items())
+        )
+        raise SystemExit(
+            "Números de migración duplicados — renombra la más reciente antes de "
+            f"continuar ({detail})"
+        )
+
+
 async def main() -> None:
     if not DATABASE_URL:
         raise SystemExit("Falta la variable de entorno DATABASE_URL")
@@ -84,6 +113,8 @@ async def main() -> None:
             for p in MIGRATIONS_DIR.glob("*.sql")
             if not p.stem.endswith("_rollback")
         )
+
+        _assert_unique_numbers(files)
 
         for path in files:
             if path.name in applied:

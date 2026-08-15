@@ -86,17 +86,19 @@ has a working counterpart to copy and adapt:
 > selling point is engineering discipline. They share a fix shape: **the
 > verification must run in CI, or it does not exist.**
 
-- [ ] **`npm run lint` is a phantom command.** `frontend/package.json` (and
-      `landing/`) declare `"lint": "eslint ."`, `CLAUDE.md` documents it, and
-      **none of it is real**: `eslint` is not in `devDependencies`, there is no
-      config file (`eslint.config.js` / `.eslintrc`), and `ci.yml` never invokes
-      it — which is exactly why nobody noticed. Fix: install `eslint` +
-      `typescript-eslint` + the React plugins in both apps, write the flat
-      config, **triage the findings by hand** (do not run `--fix` blindly), and
-      wire it into CI. Highest-value rule for this codebase is
-      `react-hooks/exhaustive-deps`: the components are full of `useCallback`
-      dependency arrays, and a wrong one produces a stale closure that `tsc`
-      cannot see and the tests may not catch.
+- [x] ~~**`npm run lint` is a phantom command.**~~ **FIXED 2026-08-14.** eslint,
+      `typescript-eslint` and the React plugins are installed in **both** apps,
+      with a flat `eslint.config.js` each, and `ci.yml` now runs **lint and
+      typecheck** before the tests in both jobs — which is the part that makes it
+      real. Findings were triaged by hand (no blind `--fix`): one genuine
+      `react-hooks/exhaustive-deps` hit in `AudioRecorder.tsx`, where the unmount
+      cleanup effect sat *above* the `useCallback`s it called and worked only by
+      accident; it moved below them and now lists its real dependencies. The three
+      `react-refresh/only-export-components` warnings on the two `LanguageContext`
+      files were **acknowledged rather than obeyed** — provider plus hook in one
+      module is the standard context shape, and splitting them would export mutable
+      module state across a boundary to buy back a dev-server nicety. Both apps
+      lint clean.
 - [x] ~~**The test suite has a hidden dependency on `OPENAI_API_KEY`.**~~ **FIXED
       2026-08-14** (confirmed live: the first CI run of the demo-limits PR failed
       on exactly this). `openai>=2` raises `OpenAIError: Missing credentials` from
@@ -119,11 +121,16 @@ has a working counterpart to copy and adapt:
       the call signatures of `audio.transcriptions.create` and
       `chat.completions.create` were checked against the pinned version — the
       offline suite would not have caught a signature change on its own.
-- [ ] **Two migrations numbered `006`** (`006_add_session_language.sql`,
-      `006_create_contact_messages.sql`). They apply fine today because the
-      runner sorts by filename, but the numbering no longer expresses order and a
-      rollback will bite. Fix: renumber one to `007` and shift the new migrations
-      of Track 1 accordingly.
+- [x] ~~**Two migrations numbered `006`.**~~ **FIXED 2026-08-14, before
+      deploying** — which was the last safe moment: renaming an applied migration
+      is free while no production database exists and hazardous afterwards.
+      `006_create_contact_messages` became `010_*` (the number is an apply-order
+      sequence, not a historical record; git holds the history, and the table
+      depends on nothing from 007-009). Its index gained `IF NOT EXISTS` so the
+      rename is survivable on a database that already applied the old name. The
+      durable half: `scripts/migrate.py` now **refuses to run** when two
+      migrations share a number — verified by planting a duplicate. A fresh
+      database applies 001→010 cleanly.
 
 ## Pending discussion and implementation
 

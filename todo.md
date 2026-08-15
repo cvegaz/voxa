@@ -172,12 +172,30 @@ Each item below had a working pps counterpart to adapt:
       `LANDING_ORIGINS` is empty by design (the landing is same-origin through
       its own nginx, so no CORS is involved at all); `POSTGRES_PASSWORD` was
       generated with `openssl rand -base64 24` and never typed by a human.
-- [ ] **Decide whether `/docs` stays public.** Currently it does — `GET
-      https://app.tryvoxa.com/docs` returns 200. For a portfolio project that is
-      arguably a feature: the API is self-documenting and the repo is public
-      anyway. But it also hands an attacker a complete map of the billable
-      endpoints and their exact payloads, which is a convenience worth pricing
-      deliberately rather than by default.
+- [x] ~~Decide whether `/docs` stays public.~~ **RESOLVED 2026-08-15 — it is not
+      public, and that is an accident of the topology rather than a decision.**
+
+      An earlier note here claimed it was, on the strength of `GET
+      https://app.tryvoxa.com/docs` returning 200. It does — but the body is the
+      **SPA**, not Swagger. FastAPI serves `/docs` and `/openapi.json` at the
+      root, while the frontend nginx proxies only `/api/`; everything else falls
+      through to `try_files … /index.html`. Reading the status code and assuming
+      the body is the same mistake that made the registrar's parking page look
+      like a working deploy. Verified from inside the Docker network, where
+      `/docs` really does return `text/html` and `/openapi.json` real JSON.
+
+      Worth recording that the security argument was overstated too: **the repo
+      is public**, so every route, payload model and validation is already
+      readable in `app/routes/`. Hiding Swagger would hide nothing — that is
+      security through obscurity. What actually protects the billable endpoints
+      needs no secrecy: per-IP limits (10/hour, 20/day), the 3-narration session
+      cap, the daily and monthly spend ledger, ffprobe-measured audio duration,
+      and the OpenAI project's own ceiling and model allowlist.
+
+      If it is ever deliberately exposed (a browsable API is a real portfolio
+      asset), the change is one `location` block in `frontend/nginx.conf` — and
+      the only thing it costs is friction against casual abuse, which the rate
+      limits already bound.
 - [ ] Daily `pg_dump` to S3 with one restore drill; uptime monitor; billing alarm.
       **Now the highest-value item left in this track**: the bucket and the
       server's write-only permission exist, but nothing writes to them on a

@@ -28,6 +28,19 @@ yarn-error.log*
 !.env.example
 !.env.*.example
 
+# Terraform.
+# .tfvars holds the owner's home IP (personal data) and is never committed;
+# the .example next to it is. Local state files would leak resource ids and,
+# for some providers, secrets — state lives in S3, not here. The .terraform
+# directory is a multi-hundred-MB provider cache.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
 # OS
 .DS_Store
 Thumbs.db

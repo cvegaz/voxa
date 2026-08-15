@@ -1,0 +1,23 @@
+# Copy to terraform.tfvars and fill in. That file is git-ignored: it carries
+# your home IP address, which is personal data and does not belong in a public
+# repository.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#   terraform init
+#   terraform plan
+#   terraform apply
+
+# Contents of your PUBLIC key. Generate one for this host:
+#   ssh-keygen -t ed25519 -C "carlos@voxa" -f ~/.ssh/voxa
+# then paste ~/.ssh/voxa.pub here. The private half never leaves your machine.
+ssh_public_key = "ssh-ed25519 AAAA... carlos@voxa"
+
+# Your current public IP as a /32. Check with:
+#   curl https://checkip.amazonaws.com
+# Home IPs change — when SSH stops working, update this and re-apply. Deploys
+# are unaffected: they go through SSM and need no inbound port.
+ssh_ingress_cidr = "203.0.113.10/32"
+
+# Apex domain. Registered at Porkbun, DNS delegated to the Route 53 hosted zone
+# this configuration reads. Set to "" to create no DNS records at all.
+domain = "tryvoxa.com"

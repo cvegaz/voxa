@@ -28,10 +28,30 @@ endpoints; email captured as a soft gate that **grants no quota**; capability
 detection instead of browser sniffing; **every cap is configuration**, so monthly
 tuning is an `.env` edit. Privacy notice is a release blocker.
 
-### Track 2 — Production (harvest the pps pattern, do not reinvent)
+### Track 2 — Production ✅ DONE (2026-08-15) — **live at https://tryvoxa.com**
 
-Voxa still lacks the production packaging that pps already proved. Each item below
-has a working counterpart to copy and adapt:
+Landing at the apex, demo app at `app.tryvoxa.com`, all three certificates issued
+by Let's Encrypt on the first ACME attempt. Verified in production: routing for
+all three hostnames, HTTP→HTTPS, the four security headers with the `Server`
+banner gone, migrations 001→010 applied, the contact form persisting a row
+through the apex, and `/api/schemas` at the apex returning the SPA rather than
+the API. Deploys are automatic from here.
+
+Two lessons worth keeping, both recorded in the deploy runbook:
+
+- **Every `docker compose` command on the server needs `--env-file
+  .env.production`**, not just `up`. `ps` and `logs` interpolate the same
+  variables and fail with `required variable POSTGRES_PASSWORD is missing a
+  value`, which reads exactly like a broken deploy while the stack is running
+  fine.
+- **For ~24 h after a DNS change your own machine is the worst witness.** The NS
+  records carry a one-day TTL, so the local resolver kept serving Porkbun's
+  nameservers after the registry had switched. Verification against the hostname
+  returned a fully convincing wrong answer — `302`, `server: openresty`, and a
+  valid Let's Encrypt certificate, all of it the registrar's parking page.
+  Verify with `curl --resolve` against the Elastic IP instead.
+
+Each item below had a working pps counterpart to adapt:
 
 - [x] ~~`landing/Dockerfile` + `landing/nginx.conf`~~ **DONE 2026-08-14.** Two-stage
       build (node to compile, nginx:alpine to serve — 25 MB final image). One
@@ -114,15 +134,6 @@ has a working counterpart to copy and adapt:
       |---|---|
       | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::275123487888:role/voxa-github-deploy` |
       | `SSM_INSTANCE_ID` | `i-0e4bb82ab4bf45264` |
-- [ ] Terraform for Voxa — same modules, **its own state key** (`voxa/stage1`) and
-      `Project=voxa` cost tag, per the account-governance decision in the shared
-      plan. **DECIDED 2026-08-14: its own EC2 instance**, not the pps host. The
-      deciding factor is blast radius, not cost: pps serves a paying client, and a
-      shared host couples that client's availability to a portfolio project's
-      deploys, restarts, and public-demo load. Sharing saves a few dollars a month
-      and buys a coupling that is expensive to undo later. (Same reasoning that
-      moved Voxa to its own OpenAI project — a shared budget is a shared failure
-      domain.)
 - [x] ~~Domain~~ **`tryvoxa.com`, bought 2026-08-15.** Chosen after checking the
       field: `voxa.com` and `voxa.dev` are ACTIVE companies in adjacent AI/dev
       spaces, and `voxa.io` / `.ai` / `.app` are parked on premium marketplaces.
@@ -145,12 +156,34 @@ has a working counterpart to copy and adapt:
       own EC2 (`i-0e4bb82ab4bf45264`, t4g.small, mx-central-1c), Elastic IP
       `78.13.12.185`, all three A records resolving, SSM agent Online, cloud-init
       done with Docker 29.1.3. State key `voxa/stage1`, cost tag `Project=voxa`.
-      Running cost ≈ **$20/month** — note this is above the ~$15 first estimated:
-      the miss was the public IPv4 charge (~$3.65/mo), which AWS has applied to
-      every public address, attached or not, since February 2024.
-- [ ] `LANDING_ORIGINS`, strong `POSTGRES_PASSWORD`, decide whether `/docs` stays
-      public.
+
+      **Its own EC2, not the pps host** (decided 2026-08-14). The deciding factor
+      is blast radius, not cost: pps serves a paying client, and a shared host
+      couples that client's availability to a portfolio project's deploys,
+      restarts and public-demo load. Sharing saves a few dollars a month and buys
+      a coupling that is expensive to undo later — the same reasoning that moved
+      Voxa to its own OpenAI project. A shared budget, like a shared host, is a
+      shared failure domain.
+
+      Running cost ≈ **$20/month** — above the ~$15 first estimated. The miss was
+      the public IPv4 charge (~$3.65/mo), which AWS has applied to *every* public
+      address, attached or not, since February 2024.
+- [x] ~~`LANDING_ORIGINS`, strong `POSTGRES_PASSWORD`~~ **DONE 2026-08-15.**
+      `LANDING_ORIGINS` is empty by design (the landing is same-origin through
+      its own nginx, so no CORS is involved at all); `POSTGRES_PASSWORD` was
+      generated with `openssl rand -base64 24` and never typed by a human.
+- [ ] **Decide whether `/docs` stays public.** Currently it does — `GET
+      https://app.tryvoxa.com/docs` returns 200. For a portfolio project that is
+      arguably a feature: the API is self-documenting and the repo is public
+      anyway. But it also hands an attacker a complete map of the billable
+      endpoints and their exact payloads, which is a convenience worth pricing
+      deliberately rather than by default.
 - [ ] Daily `pg_dump` to S3 with one restore drill; uptime monitor; billing alarm.
+      **Now the highest-value item left in this track**: the bucket and the
+      server's write-only permission exist, but nothing writes to them on a
+      schedule. This database holds the captured leads and the funnel history,
+      which is the whole answer to "did the month work" — and a backup that has
+      never been restored is a hypothesis, not a backup.
 
 ### Track 4 — Landing & distribution (the month depends on this more than on the limits)
 

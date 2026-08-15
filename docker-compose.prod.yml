@@ -1,0 +1,128 @@
+# Voxa — production stack (Stage 1 of the shared AWS deployment plan).
+#
+# Topology: Caddy (the only public entry, automatic HTTPS)
+#             ├─ apex        → landing nginx (static site + /api/contact proxy)
+#             └─ app.<domain>→ frontend nginx (SPA + /api proxy)
+#                                → backend (FastAPI) → Postgres
+#
+# Postgres has NO published port: it is reachable only on the internal compose
+# network. Publishing 5432 to the internet is the single most common way a
+# hobby deploy gets owned, and nothing outside this network needs it — backups
+# go through `docker compose exec`.
+#
+# This stack runs on its OWN EC2 instance, not alongside playPro Stats. pps
+# serves a paying client; sharing a host would couple that client's uptime to
+# a portfolio project's deploys, restarts, and public-demo load. The few
+# dollars saved are not worth the coupling (todo.md, Track 2).
+#
+# Images come from GHCR (built by .github/workflows/docker-publish.yml).
+# Configuration comes from an .env file next to this compose ON THE SERVER —
+# see .env.production.example. Local smoke test:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up
+
+name: voxa-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: db_audio_excel
+      POSTGRES_USER: postgres
+      # `:?` makes compose REFUSE TO START when the variable is missing, instead
+      # of silently booting Postgres with an empty password. Fail loud, not open.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - voxa_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d db_audio_excel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    image: ${VOXA_BACKEND_IMAGE:-ghcr.io/cvegaz/voxa-backend:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/db_audio_excel
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env.production}
+
+      # Two proxies sit in front of the backend in this topology
+      # (Caddy → landing|frontend nginx → backend), so the client address is the
+      # 2nd entry from the RIGHT of X-Forwarded-For. The default is 0 (ignore the
+      # header, use the peer) because that fails secure; here it MUST match the
+      # real hop count or every visitor shares one rate-limit bucket.
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-2}
+
+      # Demo limits (ADR-0019). All optional — the image defaults are the safe
+      # values — but listed here because tuning them monthly is the whole point
+      # of them being configuration. An invalid value refuses to boot.
+      MIN_AUDIO_DURATION_SECONDS: ${MIN_AUDIO_DURATION_SECONDS:-1.0}
+      MAX_AUDIO_DURATION_SECONDS: ${MAX_AUDIO_DURATION_SECONDS:-20.0}
+      MAX_AUDIO_BYTES: ${MAX_AUDIO_BYTES:-4194304}
+      BILLABLE_RATE_LIMIT_HOUR: ${BILLABLE_RATE_LIMIT_HOUR:-10/hour}
+      BILLABLE_RATE_LIMIT_DAY: ${BILLABLE_RATE_LIMIT_DAY:-20/day}
+      ANONYMOUS_MAX_NARRATIONS: ${ANONYMOUS_MAX_NARRATIONS:-3}
+      DEMO_BUDGET_DAILY_USD: ${DEMO_BUDGET_DAILY_USD:-0.45}
+      DEMO_BUDGET_MONTHLY_USD: ${DEMO_BUDGET_MONTHLY_USD:-7.00}
+      DEMO_COST_TRANSCRIPTION: ${DEMO_COST_TRANSCRIPTION:-0.0020}
+      DEMO_COST_EXTRACTION: ${DEMO_COST_EXTRACTION:-0.0004}
+      DEMO_COST_ENRICHMENT: ${DEMO_COST_ENRICHMENT:-0.0005}
+      DEMO_LEAD_RATE_LIMIT: ${DEMO_LEAD_RATE_LIMIT:-20/hour}
+      CONTACT_RATE_LIMIT: ${CONTACT_RATE_LIMIT:-30/minute}
+
+      # Contact-form email notification. Blank = persist to the database only.
+      CONTACT_NOTIFY_EMAIL: ${CONTACT_NOTIFY_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+
+      # CORS. Unused while the landing calls the backend same-origin through its
+      # own nginx (landing/nginx.conf), and kept for the case where the landing
+      # is ever hosted off-host (S3+CloudFront, Vercel) and becomes cross-origin.
+      LANDING_ORIGINS: ${LANDING_ORIGINS:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    # Migrations before serving. In the compose command rather than an entrypoint
+    # script so no shell file with CRLF endings can break the container, and so
+    # the sequence is visible here instead of buried in the image.
+    command: sh -c "python scripts/migrate.py && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    image: ${VOXA_FRONTEND_IMAGE:-ghcr.io/cvegaz/voxa-frontend:latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  landing:
+    image: ${VOXA_LANDING_IMAGE:-ghcr.io/cvegaz/voxa-landing:latest}
+    restart: unless-stopped
+    # Its nginx proxies /api/contact to the backend, so it must resolve.
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      VOXA_DOMAIN: ${VOXA_DOMAIN:?set VOXA_DOMAIN in .env.production}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Named volumes, not bind mounts: these hold the Let's Encrypt account key
+      # and issued certificates. Losing them means re-issuing on every restart,
+      # which runs into rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - landing
+
+volumes:
+  voxa_db_data:
+  caddy_data:
+  caddy_config:

@@ -17,10 +17,16 @@ npm-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 
-# Environment variables
+# Environment variables.
+# Deny everything, then re-admit only the templates. The previous rules listed
+# `.env`, `.env.local` and `.env.*.local`, which left `.env.production` — the
+# file holding the real OPENAI_API_KEY and POSTGRES_PASSWORD — perfectly
+# committable. An allowlist fails safe: a new .env.<something> is ignored by
+# default instead of needing someone to remember to add a rule.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 
 # OS
 .DS_Store

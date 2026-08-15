@@ -33,13 +33,55 @@ tuning is an `.env` edit. Privacy notice is a release blocker.
 Voxa still lacks the production packaging that pps already proved. Each item below
 has a working counterpart to copy and adapt:
 
-- [ ] `landing/Dockerfile` + `landing/nginx.conf` — Voxa's `landing/` has neither
-      (pps: `landing/Dockerfile`, static nginx, no `/api` proxy).
-- [ ] `docker-compose.prod.yml` — Postgres with **no published port**, backend,
-      frontend, landing, Caddy as the only public entry (pps has it).
-- [ ] `deploy/Caddyfile` — automatic HTTPS + shared security headers (pps has it;
-      its comments already anticipate Voxa joining by hostname).
-- [ ] `.env.production.example` — every production variable, no real values.
+- [x] ~~`landing/Dockerfile` + `landing/nginx.conf`~~ **DONE 2026-08-14.** Two-stage
+      build (node to compile, nginx:alpine to serve — 25 MB final image). One
+      deliberate divergence from pps: Voxa's landing has a real contact form, so
+      its nginx proxies **`location = /api/contact`** to the backend rather than
+      being pure static. Exact match, not a `/api/` prefix — least privilege, so
+      the apex does not become a second front door onto the billable
+      transcription and extraction endpoints. Same-origin also means `VITE_API_BASE`
+      stays empty, so **no CORS at all** and the image carries no domain (which
+      matters: the domain is not bought yet, and a baked absolute URL would tie
+      the artifact to it).
+- [x] ~~`docker-compose.prod.yml`~~ **DONE 2026-08-14.** Postgres with no published
+      port, `:?`-guarded secrets so a missing value refuses to boot rather than
+      starting open, and every ADR-0019 limit surfaced as an overridable variable.
+      Verified: only Caddy publishes host ports.
+- [x] ~~`deploy/Caddyfile`~~ **DONE 2026-08-14.** Apex → landing, `app.<domain>` →
+      SPA, `www` → 301, automatic HTTPS, shared security headers, an 8 MB
+      edge body cap above the app's 4 MB audio limit, and a commented CSP to
+      enable and test after the first deploy. `caddy validate` passes.
+- [x] ~~`.env.production.example`~~ **DONE 2026-08-14** — every production variable
+      with the reasoning, no real values.
+
+      **Two defects found while verifying this batch, both fixed:**
+
+      1. **`.env.production` was not git-ignored.** The rules were `.env`,
+         `.env.local`, `.env.*.local` — none of which match `.env.production`,
+         the file that holds the real `OPENAI_API_KEY` and `POSTGRES_PASSWORD`.
+         Replaced with deny-all-then-readmit-templates (`.env.*` plus
+         `!.env.example` / `!.env.*.example`), which fails safe: a future
+         `.env.<anything>` is ignored by default instead of relying on someone
+         remembering to add a rule.
+      2. **nginx resolved the `backend` hostname at config-load time**, in both
+         the landing and the pre-existing frontend config. Caught by the landing
+         image refusing to start at all with no backend present. Two production
+         failure modes: a crash loop under `restart: unless-stopped` (a static
+         marketing site down because an API is slow), and — worse — a stale
+         container IP cached forever after a redeploy, a permanent 502 that only
+         a manual restart clears. Fixed with Docker's embedded resolver plus a
+         variable in `proxy_pass`, which defers resolution to request time.
+         **pps's `frontend/nginx.conf` has the same latent defect** and should get
+         the same fix; noted in its deploy runbook.
+
+      **Verified end to end**, whole stack on localhost with Caddy's internal CA:
+      apex→landing 200, app→SPA 200, www 301, HTTP→HTTPS 308, all four security
+      headers present and the `Server` banner gone; `POST /api/contact` through the
+      apex reached the backend and **persisted a row**; `/api/schemas` at the apex
+      returned the SPA (200) instead of the API, confirming the narrow proxy. And
+      the hop-counting property: 33 POSTs each carrying a **different forged
+      `X-Forwarded-For`** all landed in one bucket and the tail got 429 — a spoofed
+      header cannot mint fresh quota.
 - [ ] `.github/workflows/docker-publish.yml` — multi-arch build → GHCR → deploy via
       AWS SSM with OIDC (no stored keys, no inbound SSH). pps's version is
       directly adaptable.

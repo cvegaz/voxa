@@ -164,3 +164,26 @@
   line-height: 1.45;
   margin: 0;
 }
+
+/* The recording cap, stated before recording starts (ADR-0019 §1). Quiet by
+   design: it informs the pacing, it is not a warning. */
+.limitHint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #6b7280);
+  margin: 0;
+  text-align: center;
+}
+
+/* Final stretch of the recording — the timer turns into a warning so the
+   auto-stop is never the first notice the user gets. */
+.timerWarning {
+  color: var(--color-warning-fg);
+}
+
+.timeLeft {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-warning-fg);
+  margin: 0;
+  text-align: center;
+}

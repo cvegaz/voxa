@@ -19,13 +19,16 @@ values into the right columns — appending a new row to your spreadsheet. No ty
 no forms.
 
 <!--
-  ⬇️ The demo is what sells this project. Record a ~20–30s screen capture of the
+  ⬇️ TODO (tracked in todo.md, Track 4): record a ~20–30s screen capture of the
   real flow (upload template → narrate → row appears → download .xlsx), export it
-  as a GIF, and drop it at docs/assets/demo.gif — this image tag will pick it up.
-  Until then the alt text shows. Tools: ScreenToGif (Windows), or record MP4 and
-  convert with ffmpeg/ezgif.
+  as a GIF, drop it at docs/assets/demo.gif, and restore the image tag below:
+
+  ![Voxa demo — narrate your data, watch it fill the spreadsheet](docs/assets/demo.gif)
+
+  The tag is commented out on purpose: docs/assets/ does not exist yet, and a
+  broken image at the top of a public README costs more than no image at all.
+  Tools: record an MP4 and convert with ffmpeg/ezgif.
 -->
-![Voxa demo — narrate your data, watch it fill the spreadsheet](docs/assets/demo.gif)
 
 ## How it works
 
@@ -49,8 +52,16 @@ A few deliberate behaviors worth knowing (and the decisions behind them):
   `17-sep-2026`, English `09/17/2026`). See
   [ADR-0016](docs/adr/0016-frontend-i18n-approach.md) and
   [ADR-0017](docs/adr/0017-per-session-language-and-locale-formatting.md).
-- **Recording length** is capped at **20s** per narration (free tier), enforced on
-  both the client and the server, and configurable for future paid tiers.
+- **Recording length** is capped at **20s** per narration. The cap is *measured
+  server-side* from the uploaded file with `ffprobe` — the client's reported
+  duration is not trusted, because a form field is not a security control. The
+  recorder shows the budget and warns in the final seconds.
+  (See [ADR-0019](docs/adr/0019-public-demo-limits.md).)
+- **Public demo limits**: an anonymous trial is **1 template + 3 narrations**;
+  the endpoints that call OpenAI are rate-limited per IP; and a spend ledger holds
+  the whole demo to a hard **USD ceiling per day and per month**. Every cap is an
+  environment variable (see `backend/.env.example`), so tuning is a config edit
+  and a restart — never a rebuild.
 - **Microphone quality**: if a Bluetooth mic is detected, Voxa shows a non-blocking
   warning — its low-fidelity profile hurts transcription accuracy.
   (See [ADR-0014](docs/adr/0014-audio-capture-constraints.md).)
@@ -100,8 +111,12 @@ cp backend/.env.example backend/.env   # then edit backend/.env
 docker compose up --build
 ```
 
-- Frontend: <http://localhost:8080>
-- Backend API docs (Swagger): <http://localhost:8000/docs>
+- Frontend: <http://localhost:5300>
+- Backend API docs (Swagger): <http://localhost:5310/docs>
+
+Voxa owns the **`53xx`** port block (`+00` frontend, `+01` landing, `+10`
+backend, `+30` Postgres). Vite pins its port with `strictPort: true`, so a
+collision fails loudly instead of silently moving.
 
 On startup the backend applies database migrations (`scripts/migrate.py`) before
 serving.
@@ -118,7 +133,7 @@ email notification, honeypot + rate-limit anti-spam).
 ```bash
 cd landing
 npm install
-npm run dev        # Vite on :5173, proxies /api → localhost:8000
+npm run dev        # Vite on :5301, proxies /api → localhost:5310
 npm test           # vitest run
 npm run build      # static site in landing/dist/ (deploy to any CDN)
 ```
@@ -136,7 +151,7 @@ its origin through CORS.
 cd backend
 pip install -r requirements.txt
 python scripts/migrate.py                # apply migrations/*.sql
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 5310
 ```
 
 **Frontend**
@@ -144,7 +159,7 @@ uvicorn app.main:app --reload --port 8000
 ```bash
 cd frontend
 npm install
-npm run dev        # Vite on :5173, proxies /api → localhost:8000
+npm run dev        # Vite on :5300, proxies /api → localhost:5310
 ```
 
 ## Configuration
@@ -156,6 +171,19 @@ Backend configuration lives in `backend/.env` (copied from
 |----------|-------------|
 | `DATABASE_URL` | `postgresql://user:password@host:port/database` |
 | `OPENAI_API_KEY` | OpenAI key — used for both transcription and extraction. **Every call costs real money**, so set a monthly spending cap in the OpenAI dashboard. |
+
+The public-demo limits (recording cap, per-IP rate limits, trial allowance, and
+the daily/monthly spend ceilings) are all environment variables too, each
+documented inline in `backend/.env.example`. An invalid value makes the backend
+**refuse to boot** on purpose: these are cost controls, and a typo that silently
+falls back to a default is the exact failure they exist to prevent.
+
+A monthly funnel report — sessions, "aha" rate, downloads, leads, walls hit,
+spend, and cost per captured lead — is available with:
+
+```bash
+cd backend && .venv/bin/python scripts/funnel_report.py
+```
 
 Inside Docker Compose, `DATABASE_URL` is overridden to point at the `db` service.
 

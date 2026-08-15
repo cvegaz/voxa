@@ -24,12 +24,24 @@ class LLMEnrichmentService:
         """Initialize with an optional pre-configured OpenAI client.
 
         Args:
-            client: An AsyncOpenAI client instance. If None, a new client
-                    is created using the OPENAI_API_KEY env variable.
+            client: An AsyncOpenAI client instance. If None, one is created
+                    **lazily** on first use from the OPENAI_API_KEY env variable.
+                    See ``LLMExtractionService.__init__`` for why the laziness is
+                    load-bearing rather than a micro-optimisation.
         """
-        self._client = client or openai.AsyncOpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY", ""),
-        )
+        self._explicit_client = client
+        self._lazy_client: openai.AsyncOpenAI | None = None
+
+    @property
+    def _client(self) -> openai.AsyncOpenAI:
+        """The injected client, or one built on first use."""
+        if self._explicit_client is not None:
+            return self._explicit_client
+        if self._lazy_client is None:
+            self._lazy_client = openai.AsyncOpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY", ""),
+            )
+        return self._lazy_client
 
     def _build_prompt(self, context: str, schema: ColumnSchema, language: str = "es") -> str:
         """Build the prompt combining user context and column schema.

@@ -58,6 +58,11 @@ export interface TranscriptionSession {
 export type TranscriptionErrorCode =
   | 'AUDIO_TOO_SHORT'
   | 'AUDIO_TOO_LONG'
+  | 'AUDIO_TOO_LARGE'
+  | 'AUDIO_UNREADABLE'
+  | 'RATE_LIMITED'
+  | 'DEMO_BUDGET_EXHAUSTED'
+  | 'TRIAL_EXHAUSTED'
   | 'UNSUPPORTED_AUDIO_FORMAT'
   | 'EMPTY_AUDIO_FILE'
   | 'WHISPER_UNAVAILABLE'
@@ -112,6 +117,36 @@ function mapTranscriptionErrorToUserMessage(
       return localized(
         'El audio es demasiado largo. Máximo 20 segundos.',
         'The audio is too long. Maximum 20 seconds.'
+      );
+    case 'AUDIO_TOO_LARGE':
+      return localized(
+        'El archivo de audio es demasiado grande.',
+        'The audio file is too large.'
+      );
+    // The server could not measure the recording, so it refuses to process it
+    // (ADR-0019 fails closed). Phrased as something the user can act on rather
+    // than as a server fault — re-recording almost always fixes it.
+    case 'AUDIO_UNREADABLE':
+      return localized(
+        'No se pudo leer el archivo de audio. Vuelve a grabar la narración.',
+        'The audio file could not be read. Please record the narration again.'
+      );
+    // The three demo limits (ADR-0019). Each says what happened AND what to do,
+    // because a dead end at this point is a lost visitor.
+    case 'RATE_LIMITED':
+      return localized(
+        'Demasiadas solicitudes seguidas. Espera un momento e intenta de nuevo.',
+        'Too many requests in a row. Wait a moment and try again.'
+      );
+    case 'DEMO_BUDGET_EXHAUSTED':
+      return localized(
+        'La demostración gratuita alcanzó su cupo. Déjanos tu correo y te damos acceso.',
+        'The free demo has reached its quota. Leave us your email and we will give you access.'
+      );
+    case 'TRIAL_EXHAUSTED':
+      return localized(
+        'Alcanzaste el límite de narraciones de la prueba. Puedes descargar lo que ya capturaste.',
+        'You have reached the trial narration limit. You can still download what you captured.'
       );
     case 'UNSUPPORTED_AUDIO_FORMAT':
       return localized(

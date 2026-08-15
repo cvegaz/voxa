@@ -9,8 +9,15 @@ from fastapi.responses import Response
 from openpyxl import load_workbook
 
 from app.models import ActiveSessionResponse, ConfirmRequest, ConfirmResponse, ErrorResponse, UploadResponse
-from app.repositories import TemplateRepository
+from app.rate_limit import (
+    BILLABLE_RATE_LIMIT_DAY,
+    BILLABLE_RATE_LIMIT_HOUR,
+    limiter,
+)
+from app.repositories import TemplateRepository, UsageRepository
+from app.services.client_info import parse_browser, parse_platform, truncate
 from app.services import (
+    OPERATION_ENRICHMENT,
     ContextValidator,
     DataFrameConverter,
     ExcelValidator,
@@ -18,6 +25,7 @@ from app.services import (
     LLMInvalidResponseError,
     LLMUnavailableError,
     SchemaExtractor,
+    UsageBudget,
 )
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
@@ -102,8 +110,13 @@ async def upload_template(request: Request, file: UploadFile):
         502: {"model": ErrorResponse},
     },
 )
+@limiter.limit(BILLABLE_RATE_LIMIT_HOUR)
+@limiter.limit(BILLABLE_RATE_LIMIT_DAY)
 async def confirm_template(request: Request, body: ConfirmRequest):
     """Confirm a template session with user-provided context.
+
+    **Billable** (ADR-0019 §3): confirming runs the LLM enrichment call, so this
+    endpoint spends money even though its name does not suggest it.
 
     Flow:
     1. Retrieve session by ID and verify it exists with status 'pending'
@@ -143,7 +156,11 @@ async def confirm_template(request: Request, body: ConfirmRequest):
     # Only the languages the UI offers are honored; fall back to Spanish.
     language = body.language if body.language in ("es", "en") else "es"
 
-    # 3. Call LLM enrichment in the session language
+    # 3. Global spend ceiling (ADR-0019 §3), immediately before the billable call.
+    budget = UsageBudget(UsageRepository(pool))
+    await budget.check()
+
+    # 4. Call LLM enrichment in the session language
     llm_service = LLMEnrichmentService()
     try:
         enriched_context = await llm_service.enrich(
@@ -168,7 +185,23 @@ async def confirm_template(request: Request, body: ConfirmRequest):
             ).model_dump(),
         )
 
-    # 4. Persist enriched context and mark session as confirmed
+    # 5. Charge the ledger — only now that the enrichment call actually happened.
+    await budget.record(OPERATION_ENRICHMENT, session_id=body.session_id)
+
+    # 5b. Funnel: which browser/platform this session came from (ADR-0019 §7).
+    #     Recorded at confirm because that is where the session becomes real.
+    #     Best-effort — a diagnostic must never cost the user a confirmation.
+    try:
+        user_agent = request.headers.get("user-agent")
+        await repo.mark_client_info(
+            str(body.session_id),
+            browser=truncate(parse_browser(user_agent)),
+            platform=truncate(parse_platform(user_agent)),
+        )
+    except Exception:
+        pass
+
+    # 6. Persist enriched context and mark session as confirmed
     await repo.confirm_session(
         session_id=str(body.session_id),
         enriched_context=enriched_context,

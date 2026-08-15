@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { IconMic, IconStop, IconHeadphones, IconAlert } from './Icons';
 import { useI18n } from '../i18n/LanguageContext';
 import styles from './AudioRecorder.module.css';
@@ -23,28 +23,63 @@ export interface AudioRecorderProps {
 
 type RecorderStatus = 'idle' | 'recording' | 'processing' | 'error';
 
-/** Free-tier cap for a single recording. Kept in sync with the backend
- * AudioValidator (app/constants.py) so uploads can't bypass it. */
+/**
+ * Cap for a single recording, in seconds.
+ *
+ * This auto-stop is **UX, not enforcement** (ADR-0019 §1). The real control is
+ * server-side: the backend MEASURES the uploaded file with ffprobe and rejects
+ * anything longer, because a client-reported duration can be forged and an upload
+ * never goes through this component at all. What this constant does is let the
+ * user pace the narration against a budget they can see.
+ *
+ * Kept numerically in sync with `MAX_AUDIO_DURATION_SECONDS` in
+ * `backend/app/constants.py`.
+ */
 const DEFAULT_MAX_DURATION_SECONDS = 20;
 const MIN_DURATION_SECONDS = 1;
+
+/** Seconds of "wrap it up" warning before the auto-stop fires. */
+const WARN_REMAINING_SECONDS = 5;
+
+const CANDIDATE_MIME_TYPES = ['audio/webm;codecs=opus', 'audio/ogg', 'audio/webm'];
 
 /**
  * Determines the best supported MIME type for MediaRecorder.
  * Tries audio/webm;codecs=opus first, then audio/ogg, then audio/webm.
  */
 function getSupportedMimeType(): string {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/ogg',
-    'audio/webm',
-  ];
-  for (const type of types) {
-    if (MediaRecorder.isTypeSupported(type)) {
+  for (const type of CANDIDATE_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported?.(type)) {
       return type;
     }
   }
   // Fallback — let the browser pick
   return '';
+}
+
+/**
+ * Can this browser record at all? (ADR-0019 §6)
+ *
+ * This is **capability detection**, not user-agent sniffing. We ask the platform
+ * what it can do instead of guessing from its name: UA strings are self-reported
+ * and any browser-to-feature table rots within a year.
+ *
+ * It catches the two failures that are genuinely fatal and otherwise silent:
+ *   - `navigator.mediaDevices` is undefined outside a **secure context**, so a page
+ *     served over plain HTTP (anything but localhost) cannot reach the microphone;
+ *   - `MediaRecorder` is missing entirely on older browsers.
+ *
+ * Deliberately NOT treated as unsupported: "none of our candidate MIME types is
+ * supported". `getSupportedMimeType()` falls back to `''`, which lets the browser
+ * choose its own container — Safari records fine that way. Rejecting there would
+ * be a false negative that turns a working browser away, and losing a visitor
+ * costs far more than an occasional failed attempt.
+ */
+function isRecordingSupported(): boolean {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    return false;
+  }
+  return typeof MediaRecorder !== 'undefined';
 }
 
 /**
@@ -102,6 +137,16 @@ export function AudioRecorder({
   const [error, setError] = useState<string | null>(null);
   // True when the captured input looks like a Bluetooth mic (low-quality HFP).
   const [isBluetoothInput, setIsBluetoothInput] = useState(false);
+
+  // Evaluated once on mount rather than at module load: the capability depends on
+  // the runtime environment, and reading it at import time would freeze whatever
+  // the module system happened to see first.
+  const canRecord = useMemo(() => isRecordingSupported(), []);
+
+  // Countdown, so the cap is a budget the user can pace against instead of a
+  // surprise cut mid-word.
+  const remainingSeconds = Math.max(0, maxDurationSeconds - duration);
+  const isEndingSoon = remainingSeconds <= WARN_REMAINING_SECONDS;
 
   // The recording lifecycle is owned internally: while we're actively
   // recording, that state must win so the button shows "Detener" and can stop.
@@ -278,7 +323,7 @@ export function AudioRecorder({
     }
   };
 
-  const isButtonDisabled = isDisabled || status === 'processing';
+  const isButtonDisabled = isDisabled || status === 'processing' || !canRecord;
 
   const buttonClasses = [
     styles.recordButton,
@@ -310,17 +355,47 @@ export function AudioRecorder({
         )}
       </button>
 
+      {/* State the budget BEFORE recording. Until now nothing in the UI mentioned
+          a duration at all, so the auto-stop arrived as a surprise. */}
+      {canRecord && status !== 'recording' && (
+        <p className={styles.limitHint}>
+          {t('recorder.limitHint', { seconds: String(maxDurationSeconds) })}
+        </p>
+      )}
+
       {status === 'recording' && (
         <div className={styles.timerContainer}>
           <span className={styles.pulseIndicator} aria-hidden="true" />
           <span
-            className={styles.timer}
+            className={[styles.timer, isEndingSoon ? styles.timerWarning : '']
+              .filter(Boolean)
+              .join(' ')}
             role="timer"
             aria-live="polite"
-            aria-label={t('recorder.ariaTimer', { time: formatTime(duration) })}
+            aria-label={t('recorder.ariaTimer', {
+              time: formatTime(duration),
+              limit: formatTime(maxDurationSeconds),
+            })}
           >
-            {formatTime(duration)}
+            {formatTime(duration)} / {formatTime(maxDurationSeconds)}
           </span>
+        </div>
+      )}
+
+      {/* Final stretch: an explicit "wrap up" cue, announced to screen readers
+          too, so the cut is never the first notice the user gets. */}
+      {status === 'recording' && isEndingSoon && (
+        <p className={styles.timeLeft} role="status" aria-live="polite">
+          {t('recorder.timeLeft', { seconds: String(remainingSeconds) })}
+        </p>
+      )}
+
+      {!canRecord && (
+        <div className={styles.warningContainer} role="alert" aria-live="assertive">
+          <span className={styles.warningIcon} aria-hidden="true">
+            <IconAlert />
+          </span>
+          <p className={styles.warningMessage}>{t('recorder.unsupported')}</p>
         </div>
       )}
 

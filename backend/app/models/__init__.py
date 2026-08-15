@@ -3,6 +3,11 @@ from .contact_models import (
     ContactRequest,
     ContactResponse,
 )
+from .demo_lead_models import (
+    CapturePoint,
+    DemoLeadRequest,
+    DemoLeadResponse,
+)
 from .extraction_models import (
     ExtractionRecord,
     ExtractionRequest,
@@ -34,17 +39,19 @@ from .transcription_models import (
 )
 
 __all__ = [
+    "AcceptRequest",
+    "AcceptResponse",
+    "ActiveSessionResponse",
+    "CapturePoint",
+    "ColumnDef",
+    "ColumnSchema",
+    "ConfirmRequest",
+    "ConfirmResponse",
     "ContactMessage",
     "ContactRequest",
     "ContactResponse",
-    "ColumnDef",
-    "ColumnSchema",
-    "TemplateSession",
-    "ValidationResult",
-    "UploadResponse",
-    "ConfirmRequest",
-    "ConfirmResponse",
-    "ActiveSessionResponse",
+    "DemoLeadRequest",
+    "DemoLeadResponse",
     "ErrorResponse",
     "ExtractionErrorResponse",
     "ExtractionRecord",
@@ -53,11 +60,12 @@ __all__ = [
     "FinalizeResponse",
     "RecordValue",
     "RecordsResponse",
-    "TranscribeResponse",
-    "AcceptRequest",
-    "AcceptResponse",
     "ResetRequest",
     "ResetResponse",
-    "TranscriptionSession",
+    "TemplateSession",
+    "TranscribeResponse",
     "TranscriptionErrorResponse",
+    "TranscriptionSession",
+    "UploadResponse",
+    "ValidationResult",
 ]

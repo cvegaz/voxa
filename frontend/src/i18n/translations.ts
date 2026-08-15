@@ -62,7 +62,11 @@ export const messages = {
     'recorder.ariaStart': 'Iniciar grabación de audio',
     'recorder.ariaStop': 'Detener grabación',
     'recorder.ariaProcessing': 'Procesando audio',
-    'recorder.ariaTimer': 'Tiempo de grabación: {time}',
+    'recorder.ariaTimer': 'Tiempo de grabación: {time} de {limit}',
+    'recorder.limitHint': 'Máximo {seconds} segundos por grabación',
+    'recorder.timeLeft': 'Te quedan {seconds} s — ve cerrando la idea',
+    'recorder.unsupported':
+      'Este navegador no puede grabar audio. Prueba con otro navegador, o verifica que la página se esté sirviendo por HTTPS (el micrófono lo requiere).',
     'recorder.tooShort': 'El audio es demasiado corto (mínimo 1 segundo)',
     'recorder.permissionDenied': 'Se requiere acceso al micrófono para usar esta funcionalidad.',
     'recorder.deviceError': 'No se pudo acceder al dispositivo de audio.',
@@ -97,12 +101,43 @@ export const messages = {
 
     // Session controls
     'session.counter': '{count} / {max} registros',
-    'session.capReached': 'Límite de {max} registros alcanzado. La sesión se finalizó.',
+    'session.capReached':
+      'Llegaste a los {max} registros de la prueba. Descarga tu Excel — lo que capturaste está completo.',
     'session.finalized': 'Sesión finalizada.',
     'session.download': 'Descargar Excel',
     'session.ariaDownload': 'Descargar el archivo Excel',
     'session.finalizeAndDownload': 'Finalizar y descargar',
     'session.ariaFinalize': 'Finalizar la sesión y descargar el Excel',
+
+    // Demo lead capture (soft gate) — optional, never blocks the download
+    'lead.promptDownload': '¿Te sirvió? Déjanos tu correo y te contamos novedades.',
+    'lead.promptWall': '¿Necesitas más registros? Déjanos tu correo y te damos acceso.',
+    'lead.placeholder': 'tu@correo.com',
+    'lead.submit': 'Enviar',
+    'lead.thanks': 'Gracias. Te escribimos pronto.',
+    'lead.privacy': 'Solo lo usamos para contactarte sobre Voxa. Nada más.',
+
+    // Privacy notice (release blocker — Voxa processes voice, ADR-0019 §8)
+    'privacy.link': 'Aviso de privacidad',
+    'privacy.title': 'Aviso de privacidad',
+    'privacy.intro':
+      'Voxa procesa tu voz, que es un dato personal. Esto es lo que se recopila, a dónde va y cuánto tiempo se conserva.',
+    'privacy.audioTitle': 'Tu audio',
+    'privacy.audioBody':
+      'La grabación se envía a OpenAI (servicio Whisper) para convertirla en texto, y el texto se envía a OpenAI (gpt-4o-mini) para extraer los datos de tu plantilla. El archivo de audio NO se guarda en nuestros servidores: se procesa y se descarta. Lo que sí se conserva es el texto transcrito y los valores extraídos, porque son el resultado que descargas.',
+    'privacy.emailTitle': 'Tu correo, si lo dejas',
+    'privacy.emailBody':
+      'El campo de correo es opcional y nunca bloquea la descarga. Si lo dejas, lo guardamos para contactarte sobre Voxa. No lo compartimos ni lo vendemos, y no lo verificamos: no recibirás nada automático por dejarlo.',
+    'privacy.usageTitle': 'Datos de uso',
+    'privacy.usageBody':
+      'Registramos en qué paso quedó cada sesión (si llegaste a narrar, si descargaste, si topaste con un límite), tu navegador y sistema operativo en categorías amplias, y los NOMBRES de las columnas de tu plantilla — nunca los valores que narras. Sirve para saber si el demo falla en algún dispositivo y qué tipo de datos le interesa capturar a la gente.',
+    'privacy.retentionTitle': 'Cuánto se conserva',
+    'privacy.retentionBody':
+      'Esto es una demostración pública: los datos de captura se conservan mientras la demostración esté activa y pueden borrarse en cualquier momento sin aviso. No uses Voxa para información sensible o confidencial.',
+    'privacy.rightsTitle': 'Tus derechos',
+    'privacy.rightsBody':
+      'Puedes pedir el acceso, la rectificación, la cancelación o la oposición al tratamiento de tus datos (derechos ARCO) escribiendo al correo de contacto del sitio. Responsable: Carlos Vega.',
+    'privacy.close': 'Cerrar',
 
     // Shared
     'common.retry': 'Reintentar',
@@ -157,7 +192,11 @@ export const messages = {
     'recorder.ariaStart': 'Start audio recording',
     'recorder.ariaStop': 'Stop recording',
     'recorder.ariaProcessing': 'Processing audio',
-    'recorder.ariaTimer': 'Recording time: {time}',
+    'recorder.ariaTimer': 'Recording time: {time} of {limit}',
+    'recorder.limitHint': 'Up to {seconds} seconds per recording',
+    'recorder.timeLeft': '{seconds}s left — start wrapping up',
+    'recorder.unsupported':
+      'This browser cannot record audio. Try a different browser, or check that the page is served over HTTPS (the microphone requires it).',
     'recorder.tooShort': 'The audio is too short (minimum 1 second)',
     'recorder.permissionDenied': 'Microphone access is required to use this feature.',
     'recorder.deviceError': 'Could not access the audio device.',
@@ -187,12 +226,43 @@ export const messages = {
     'vista.ariaTable': 'Excel file records',
 
     'session.counter': '{count} / {max} records',
-    'session.capReached': 'Limit of {max} records reached. The session was finalized.',
+    'session.capReached':
+      'You reached the trial limit of {max} records. Download your Excel — what you captured is complete.',
     'session.finalized': 'Session finalized.',
     'session.download': 'Download Excel',
     'session.ariaDownload': 'Download the Excel file',
     'session.finalizeAndDownload': 'Finalize and download',
     'session.ariaFinalize': 'Finalize the session and download the Excel',
+
+    // Demo lead capture (soft gate) — optional, never blocks the download
+    'lead.promptDownload': 'Was this useful? Leave your email and we will keep you posted.',
+    'lead.promptWall': 'Need more records? Leave your email and we will get you access.',
+    'lead.placeholder': 'you@email.com',
+    'lead.submit': 'Send',
+    'lead.thanks': 'Thanks. We will be in touch.',
+    'lead.privacy': 'Only used to contact you about Voxa. Nothing else.',
+
+    // Privacy notice (release blocker — Voxa processes voice, ADR-0019 §8)
+    'privacy.link': 'Privacy notice',
+    'privacy.title': 'Privacy notice',
+    'privacy.intro':
+      'Voxa processes your voice, which is personal data. Here is what is collected, where it goes, and how long it is kept.',
+    'privacy.audioTitle': 'Your audio',
+    'privacy.audioBody':
+      'The recording is sent to OpenAI (Whisper) to turn it into text, and the text is sent to OpenAI (gpt-4o-mini) to extract the fields of your template. The audio file is NOT stored on our servers: it is processed and discarded. What is kept is the transcribed text and the extracted values, because they are the result you download.',
+    'privacy.emailTitle': 'Your email, if you leave it',
+    'privacy.emailBody':
+      'The email field is optional and never blocks the download. If you leave it, we store it to contact you about Voxa. We do not share or sell it, and we do not verify it: leaving it triggers no automated messages.',
+    'privacy.usageTitle': 'Usage data',
+    'privacy.usageBody':
+      'We record how far each session got (whether you reached a narration, downloaded, or hit a limit), your browser and operating system as broad categories, and the NAMES of your template columns — never the values you narrate. This tells us whether the demo fails on some device, and what kind of data people want to capture.',
+    'privacy.retentionTitle': 'How long it is kept',
+    'privacy.retentionBody':
+      'This is a public demo: capture data is kept while the demo is running and may be deleted at any time without notice. Do not use Voxa for sensitive or confidential information.',
+    'privacy.rightsTitle': 'Your rights',
+    'privacy.rightsBody':
+      'You may request access, rectification, cancellation, or object to the processing of your data by writing to the contact address on the site. Data controller: Carlos Vega.',
+    'privacy.close': 'Close',
 
     'common.retry': 'Retry',
     'common.unexpectedError': 'An unexpected error occurred. Please try again.',

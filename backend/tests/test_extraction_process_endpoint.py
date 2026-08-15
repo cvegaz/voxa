@@ -163,13 +163,18 @@ class TestExtractionProcessSessionValidation:
 
     @patch("app.routes.extraction_routes.ExtractionRepository")
     def test_finalized_session_returns_422(self, MockRepo, client):
-        """A finalized session rejects new extractions with SESSION_FINALIZED."""
+        """A session the USER finalized rejects new extractions with SESSION_FINALIZED.
+
+        Fewer records than the allowance ⇒ it was closed by hand, not by the cap
+        (ADR-0019 §2 derives the reason from the count).
+        """
         session_id = str(uuid4())
 
         mock_repo = MockRepo.return_value
         mock_repo.get_session_with_context = AsyncMock(
             return_value=_session_data(session_id, status="finalized")
         )
+        mock_repo.count_records = AsyncMock(return_value=1)
 
         response = client.post(
             "/api/extraction/process",
@@ -181,6 +186,35 @@ class TestExtractionProcessSessionValidation:
 
         assert response.status_code == 422
         assert response.json()["errorCode"] == "SESSION_FINALIZED"
+
+    @patch("app.routes.extraction_routes.ExtractionRepository")
+    def test_session_closed_by_the_trial_cap_returns_trial_exhausted(
+        self, MockRepo, client
+    ):
+        """Same stored status, different story — and a different message.
+
+        A session holding the full allowance was closed by the cap, not by the
+        user. Telling both cases "the session was finalized" would leave the
+        visitor with no idea that they hit a limit or what to do next; this is the
+        wall that is meant to convert (ADR-0019 §5), not a dead end.
+        """
+        from app.constants import MAX_ROWS_PER_SESSION
+
+        session_id = str(uuid4())
+
+        mock_repo = MockRepo.return_value
+        mock_repo.get_session_with_context = AsyncMock(
+            return_value=_session_data(session_id, status="finalized")
+        )
+        mock_repo.count_records = AsyncMock(return_value=MAX_ROWS_PER_SESSION)
+
+        response = client.post(
+            "/api/extraction/process",
+            json={"session_id": session_id, "transcribed_text": "Texto de prueba."},
+        )
+
+        assert response.status_code == 422
+        assert response.json()["errorCode"] == "TRIAL_EXHAUSTED"
 
     @patch("app.routes.extraction_routes.ExtractionRepository")
     def test_replaced_session_returns_422(self, MockRepo, client):

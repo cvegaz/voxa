@@ -25,11 +25,13 @@ services:
       POSTGRES_PASSWORD: postgres       # local-development-only credential
       POSTGRES_DB: db_audio_excel
     ports:
-      # HOST:CONTAINER. We use 5433 on the host because your LOCAL Postgres
-      # already occupies 5432. The container's database still listens on 5432
-      # internally, so the backend (which connects to db:5432) is unaffected. To
-      # inspect this database with a client from your PC, connect to localhost:5433.
-      - "5433:5432"
+      # HOST:CONTAINER. The host side comes from voxa's reserved block (53xx in
+      # ~/Dev/PORTS.md): 5330 is the "+30 database" role. It used to be 5433,
+      # which collides with clocky's Postgres — that port belongs to clocky.
+      # The CONTAINER side stays 5432 and is NOT part of the registry: container
+      # ports live in their own network namespace and never collide, which is why
+      # the backend still connects to db:5432 unchanged.
+      - "5330:5432"
     volumes:
       # Named volume: Postgres data lives here and SURVIVES `docker compose down`.
       # Without this, you would lose the database when the containers stop.
@@ -53,7 +55,9 @@ services:
       # `environment` takes precedence over `env_file`.
       DATABASE_URL: postgresql://postgres:postgres@db:5432/db_audio_excel
     ports:
-      - "8000:8000"                     # direct access to the API and to /docs (Swagger)
+      # 5310 = "+10 backend" in voxa's 53xx block. 8000 (the old host port) is a
+      # default-magnet port the registry forbids. Container side stays 8000.
+      - "5310:8000"                     # direct access to the API and to /docs (Swagger)
     # No file volume: the backend is stateless. The result .xlsx is rebuilt in
     # memory from the database on download (ADR-0013), never written to disk.
     depends_on:
@@ -68,7 +72,9 @@ services:
   frontend:
     build: ./frontend                   # builds using frontend/Dockerfile (multi-stage)
     ports:
-      - "8080:80"                       # opens the app at http://localhost:8080
+      # 5300 = "+00 primary frontend" in voxa's 53xx block. 8080 collided with
+      # clocky and is a default-magnet port besides.
+      - "5300:80"                       # opens the app at http://localhost:5300
     depends_on:
       - backend                         # starts after the backend
 

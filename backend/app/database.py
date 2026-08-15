@@ -8,7 +8,10 @@ import asyncpg
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/db_audio_excel",
+    # Host port 5330 = voxa's reserved "+30 database" slot (~/Dev/PORTS.md).
+    # 5432 (the old default) is a default-magnet port that belongs to whatever
+    # Postgres the machine happens to run.
+    "postgresql://postgres:postgres@localhost:5330/db_audio_excel",
 )
 
 

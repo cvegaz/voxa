@@ -183,6 +183,75 @@ class TestAudioValidatorEmptyFile:
         assert result.is_valid is True
 
 
+class TestAudioValidatorByteCeiling:
+    """The byte cap (ADR-0019 §1).
+
+    It is explicitly NOT a duration control — size cannot bound seconds when the
+    client picks the bitrate. Its job is to stop an absurd upload from being
+    buffered, written to a temp file and handed to a subprocess.
+    """
+
+    def test_file_within_ceiling_passes(self):
+        validator = AudioValidator(max_bytes=1024)
+        file = _create_audio_upload(content=b"x" * 1024)
+        assert validator.validate(file, duration=5.0).is_valid is True
+
+    def test_file_above_ceiling_rejected(self):
+        validator = AudioValidator(max_bytes=1024)
+        file = _create_audio_upload(content=b"x" * 1025)
+        result = validator.validate(file, duration=5.0)
+        assert result.is_valid is False
+        assert result.error_code == "AUDIO_TOO_LARGE"
+
+    def test_size_is_checked_before_mime_type(self):
+        """An oversized upload is rejected on size, whatever it claims to be."""
+        validator = AudioValidator(max_bytes=10)
+        file = _create_audio_upload(content=b"x" * 100, content_type="text/plain")
+        assert validator.validate(file, duration=5.0).error_code == "AUDIO_TOO_LARGE"
+
+    def test_empty_file_still_takes_priority_over_size(self):
+        validator = AudioValidator(max_bytes=10)
+        file = _create_audio_upload(content=b"")
+        assert validator.validate(file, duration=5.0).error_code == "EMPTY_AUDIO_FILE"
+
+
+class TestAudioValidatorValidateUpload:
+    """``validate_upload`` runs only the checks that need no decoding.
+
+    The route calls it before measuring the audio, so an already-invalid file never
+    reaches the probe. It must therefore be complete on its own axes and say nothing
+    about duration.
+    """
+
+    def setup_method(self):
+        self.validator = AudioValidator(max_bytes=1024)
+
+    def test_accepts_a_valid_upload_without_any_duration(self):
+        file = _create_audio_upload()
+        assert self.validator.validate_upload(file).is_valid is True
+
+    def test_rejects_empty(self):
+        file = _create_audio_upload(content=b"")
+        assert self.validator.validate_upload(file).error_code == "EMPTY_AUDIO_FILE"
+
+    def test_rejects_oversized(self):
+        file = _create_audio_upload(content=b"x" * 2048)
+        assert self.validator.validate_upload(file).error_code == "AUDIO_TOO_LARGE"
+
+    def test_rejects_unsupported_mime(self):
+        file = _create_audio_upload(content_type="text/plain")
+        assert (
+            self.validator.validate_upload(file).error_code
+            == "UNSUPPORTED_AUDIO_FORMAT"
+        )
+
+    def test_leaves_the_stream_rewound_for_the_next_reader(self):
+        """The route reads the bytes right after this call; position must be 0."""
+        file = _create_audio_upload(content=b"some audio bytes")
+        self.validator.validate_upload(file)
+        assert file.file.tell() == 0
+
+
 class TestAudioValidatorFailFast:
     """Tests for fail-fast behavior and error priority."""
 

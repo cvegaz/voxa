@@ -21,6 +21,14 @@ import sys
 from pathlib import Path
 
 import asyncpg
+from dotenv import load_dotenv
+
+# Load backend/.env the same way the app does. The app gets this for free from
+# app/__init__.py, but this script deliberately does NOT import the app package
+# (it must be able to run before the app is importable), so it loads the file
+# itself. load_dotenv does not override variables that are already set, so the
+# values injected by Docker Compose still win inside the container.
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 # Same variable the app uses (app/database.py). In Docker it will point to the
 # "db" service, not localhost.

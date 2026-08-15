@@ -113,3 +113,20 @@
     padding: 1.5rem 1.25rem;
   }
 }
+
+/* Privacy notice link (ADR-0019 §8). A button, not an anchor: it opens a dialog
+   rather than navigating, and an <a href="#"> would lie to assistive tech about
+   what pressing it does. Styled to read as a link. */
+.privacyLink {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.privacyLink:hover {
+  color: var(--color-text, #111827);
+}

@@ -1,5 +1,13 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  onTestFinished,
+} from 'vitest';
 import { AudioRecorder } from './AudioRecorder';
 
 // Mock MediaRecorder
@@ -9,7 +17,12 @@ class MockMediaRecorder {
   onstop: (() => void) | null = null;
   mimeType: string;
 
-  static isTypeSupported = vi.fn((type: string) => type === 'audio/webm;codecs=opus');
+  // Typed explicitly as `=> boolean`: without the annotation TypeScript infers a
+  // type predicate (`type is 'audio/webm;codecs=opus'`) from the comparison, and
+  // then no other stub can be assigned to it.
+  static isTypeSupported = vi.fn<(type: string) => boolean>(
+    (type) => type === 'audio/webm;codecs=opus'
+  );
 
   constructor(_stream: MediaStream, options?: MediaRecorderOptions) {
     this.mimeType = options?.mimeType || 'audio/webm';
@@ -319,5 +332,131 @@ describe('AudioRecorder', () => {
 
     const timer = screen.getByRole('timer');
     expect(timer).toHaveAttribute('aria-live', 'polite');
+  });
+});
+
+/**
+ * ADR-0019 §1 — the cap must be a budget the user can pace against.
+ *
+ * Before this, nothing in the UI mentioned a duration: the auto-stop simply cut
+ * the narration mid-word. That is the failure mode the whole "keep 20s" decision
+ * was made to avoid, so it is worth pinning down in tests.
+ */
+describe('AudioRecorder — communicating the recording budget', () => {
+  const defaultProps = {
+    onRecordingComplete: vi.fn(),
+    onError: vi.fn(),
+  };
+
+  it('states the limit before recording starts', () => {
+    render(<AudioRecorder {...defaultProps} />);
+    expect(screen.getByText(/máximo 20 segundos por grabación/i)).toBeInTheDocument();
+  });
+
+  it('reflects a custom cap in the stated limit', () => {
+    render(<AudioRecorder {...defaultProps} maxDurationSeconds={45} />);
+    expect(screen.getByText(/máximo 45 segundos por grabación/i)).toBeInTheDocument();
+  });
+
+  it('shows elapsed time against the limit while recording', async () => {
+    render(<AudioRecorder {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /iniciar grabación/i }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(3000);
+    });
+
+    expect(screen.getByRole('timer')).toHaveTextContent('00:03 / 00:20');
+  });
+
+  it('hides the static hint while recording (the timer carries it)', async () => {
+    render(<AudioRecorder {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /iniciar grabación/i }));
+    });
+
+    expect(screen.queryByText(/máximo 20 segundos/i)).not.toBeInTheDocument();
+  });
+
+  it('warns in the final stretch so the user can wrap up', async () => {
+    render(<AudioRecorder {...defaultProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /iniciar grabación/i }));
+    });
+
+    // 14s elapsed -> 6s left: still outside the warning window.
+    await act(async () => {
+      vi.advanceTimersByTime(14000);
+    });
+    expect(screen.queryByText(/te quedan/i)).not.toBeInTheDocument();
+
+    // 16s elapsed -> 4s left: warn.
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(screen.getByText(/te quedan 4 s/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * ADR-0019 §6 — capability detection, never user-agent sniffing.
+ *
+ * A silent failure here is worse than it looks: the visitor concludes the product
+ * does not work and leaves, and the month's headline metric (sessions reaching a
+ * first narration) records it as disinterest rather than as a broken environment.
+ */
+describe('AudioRecorder — capability detection', () => {
+  const defaultProps = {
+    onRecordingComplete: vi.fn(),
+    onError: vi.fn(),
+  };
+
+  it('explains the problem when MediaRecorder is missing', () => {
+    Object.defineProperty(globalThis, 'MediaRecorder', {
+      writable: true,
+      value: undefined,
+    });
+
+    render(<AudioRecorder {...defaultProps} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/no puede grabar audio/i);
+    expect(screen.getByRole('button', { name: /iniciar grabación/i })).toBeDisabled();
+  });
+
+  it('explains the problem outside a secure context (no mediaDevices)', () => {
+    // navigator.mediaDevices is undefined on plain HTTP — the microphone is
+    // unreachable and this is exactly how a broken HTTPS deploy would present.
+    Object.defineProperty(navigator, 'mediaDevices', {
+      writable: true,
+      value: undefined,
+    });
+
+    render(<AudioRecorder {...defaultProps} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/https/i);
+    expect(screen.getByRole('button', { name: /iniciar grabación/i })).toBeDisabled();
+  });
+
+  it('still allows recording when no candidate MIME type is supported', () => {
+    // Safari reports false for our candidates yet records fine with the browser's
+    // own container. Rejecting here would be a false negative that turns a
+    // working browser away — the costliest possible mistake for a demo.
+    // Restored explicitly: reassigning a static is not undone by restoreAllMocks.
+    const original = MockMediaRecorder.isTypeSupported;
+    MockMediaRecorder.isTypeSupported = vi.fn<(type: string) => boolean>(() => false);
+    onTestFinished(() => {
+      MockMediaRecorder.isTypeSupported = original;
+    });
+
+    render(<AudioRecorder {...defaultProps} />);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /iniciar grabación/i })
+    ).not.toBeDisabled();
   });
 });

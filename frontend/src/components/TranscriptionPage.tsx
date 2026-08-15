@@ -59,8 +59,10 @@ const initialState: TranscriptionPageState = {
   records: [],
   columns: [],
   isRecordsLoading: false,
-  // Corrected by the backend on the first records fetch; 5 is the current cap.
-  maxRows: 5,
+  // Placeholder only — the backend is the source of truth and overwrites this on
+  // the first records fetch. Kept in step with the anonymous allowance (ADR-0019
+  // §2) so the counter does not flash a wrong total before that arrives.
+  maxRows: 3,
   finalized: false,
   isClosing: false,
 };
@@ -458,6 +460,7 @@ export function TranscriptionPage() {
           isBusy={state.isClosing}
           onFinalize={handleFinalize}
           onDownload={handleDownload}
+          sessionId={state.sessionId ?? undefined}
         />
       )}
 

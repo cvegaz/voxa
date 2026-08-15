@@ -96,6 +96,82 @@ class TemplateRepository:
                     f"Session {session_id} not found or not in 'pending' status"
                 )
 
+    async def mark_client_info(
+        self,
+        session_id: str,
+        browser: Optional[str],
+        platform: Optional[str],
+    ) -> None:
+        """Record which browser/platform this session came from (ADR-0019 §7).
+
+        Best-effort telemetry: never raises when the session is gone, because a
+        failure to record a diagnostic must not fail the user's request.
+        """
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE template_sessions
+                SET client_browser = $1, client_platform = $2
+                WHERE id = $3
+                """,
+                browser,
+                platform,
+                UUID(session_id),
+            )
+
+    async def mark_first_narration(self, session_id: str) -> None:
+        """Stamp the "aha" moment — the first narration that made it through.
+
+        ``IS NULL`` in the WHERE clause makes this **idempotent at the database**:
+        the second and every later narration match nothing and change nothing.
+        Enforcing "exactly once" here rather than with a read-then-write in the
+        route removes the race between two concurrent narrations entirely — the
+        row can only be claimed once.
+        """
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE template_sessions
+                SET first_narration_at = $1
+                WHERE id = $2 AND first_narration_at IS NULL
+                """,
+                datetime.now(timezone.utc),
+                UUID(session_id),
+            )
+
+    async def mark_downloaded(self, session_id: str) -> None:
+        """Stamp the first download. Idempotent, same reasoning as above:
+        re-downloading is normal and must not look like a second conversion."""
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE template_sessions
+                SET downloaded_at = $1
+                WHERE id = $2 AND downloaded_at IS NULL
+                """,
+                datetime.now(timezone.utc),
+                UUID(session_id),
+            )
+
+    async def mark_wall_hit(self, session_id: str, wall_kind: str) -> None:
+        """Stamp the first wall this session ran into.
+
+        ``wall_kind`` is 'trial' or 'budget'. First one wins, because the first is
+        the one that actually stopped the visitor; whatever they hit afterwards is
+        a consequence, not a cause.
+        """
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE template_sessions
+                SET wall_hit_at = $1, wall_kind = $2
+                WHERE id = $3 AND wall_hit_at IS NULL
+                """,
+                datetime.now(timezone.utc),
+                wall_kind,
+                UUID(session_id),
+            )
+
     async def get_active_session(self) -> Optional[TemplateSession]:
         """Retrieve the most recent confirmed session.
 

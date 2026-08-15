@@ -34,7 +34,11 @@ export const messages = {
       'Sube una plantilla, narra la información en voz alta y la IA transcribe tu voz y extrae cada dato en su columna. Sin teclear, sin formularios.',
     'hero.ctaPrimary': 'Hablemos de tu caso',
     'hero.ctaGithub': 'Ver en GitHub',
-    'hero.ctaApp': 'Probar la app',
+    'hero.ctaApp': 'Pruébalo tú mismo',
+    // Keep in sync with the backend's ANONYMOUS_MAX_NARRATIONS (default 3) and
+    // MAX_AUDIO_DURATION_SECONDS. Promising a trial the app does not grant is
+    // worse than promising nothing.
+    'hero.trialNote': 'Sin registro · 1 plantilla y 3 narraciones · ~2 minutos',
 
     // Hero mockup (animated)
     'mockup.spoken': '«Estadio Azteca, aforo 87 000, partido el 17 de septiembre»',
@@ -185,7 +189,8 @@ export const messages = {
       'Upload a template, narrate the information out loud, and AI transcribes your speech and extracts each value into its column. No typing, no forms.',
     'hero.ctaPrimary': "Let's talk about your use case",
     'hero.ctaGithub': 'View on GitHub',
-    'hero.ctaApp': 'Try the app',
+    'hero.ctaApp': 'Try it yourself',
+    'hero.trialNote': 'No sign-up · 1 template and 3 narrations · ~2 minutes',
 
     // Hero mockup (animated)
     'mockup.spoken': '“Azteca Stadium, capacity 87,000, match on September 17th”',

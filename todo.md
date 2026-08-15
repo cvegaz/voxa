@@ -162,9 +162,38 @@ has a working counterpart to copy and adapt:
 > in Phase B.4; they are repeated here because their priority is wrong down
 > there.
 
-- [ ] **`og-image.png` in `landing/public/`** — the folder holds only
-      `favicon.svg` and `robots.txt` today, so any share on LinkedIn or WhatsApp
-      renders a blank card. The single cheapest fix with the highest reach.
+- [x] ~~**CTA hierarchy in the hero**~~ **DONE 2026-08-15** (added after the
+      Track 4 discussion; it was not on this list and outranks everything that
+      was). The demo is now the **primary** action ("Pruébalo tú mismo"),
+      contact is a clear secondary, GitHub is tertiary. Product-led rather than
+      sales-led, for a specific reason: Voxa is hard to describe and obvious to
+      see — "captura de datos por voz" means nothing read, and thirty seconds of
+      narrating means everything. It also makes the ADR-0019 §7 funnel
+      instrumentation worth having, since aha rate, downloads and walls measure
+      nothing while the demo sits behind a hidden ghost button.
+
+      Under the buttons: *"Sin registro · 1 plantilla y 3 narraciones · ~2
+      minutos"*. Removes the friction that suppresses the click, and means the
+      wall is not a surprise when a visitor reaches it. Keep it in sync with
+      `ANONYMOUS_MAX_NARRATIONS`.
+
+      With no app URL configured the hierarchy falls back to contact-primary and
+      the note disappears — a headline button pointing nowhere is worse than one
+      fewer button. Five tests in `Hero.test.tsx` cover both configurations, the
+      trial note, and `rel=noopener` on the new-tab link.
+- [x] ~~**`og-image.png` in `landing/public/`**~~ **DONE 2026-08-15.** 1200×630,
+      built from `landing/design/og-image.svg` (committed, with a README on
+      regenerating it — a PNG with no source is a dead end). Uses the brand
+      tokens and the favicon's mic glyph: wordmark, headline, and the
+      voice→row visual that shows the product in one glance.
+
+      **Found while doing it**: `og:image` was `/og-image.png`, a RELATIVE path.
+      Open Graph crawlers do not resolve relative URLs — so the card would have
+      rendered blank even once the image existed, and the failure would have
+      looked like a missing file rather than a malformed tag. Now absolute, plus
+      `og:url`, `og:site_name`, `og:locale`, `og:image:width/height`,
+      `og:image:alt` and the twitter:* pair. Verified the absolute URLs survive
+      the production build.
 - [ ] **Fill `landing/.env`** — partially done 2026-08-14: `VITE_GITHUB_URL`
       now points at the real repo (`cvegaz/voxa`); it defaulted to the
       placeholder `https://github.com/tu-usuario/voxa`, i.e. the landing linked
@@ -179,7 +208,12 @@ has a working counterpart to copy and adapt:
       to is a marketing site nobody sees. Concrete channels beat "we'll share it":
       the GitHub profile README, a LinkedIn post built from the ADRs (the
       engine-extraction story is written already), and the pps case study.
-- [ ] Set backend `LANDING_ORIGINS` to the real landing origin once it is live.
+- [x] ~~Set backend `LANDING_ORIGINS` to the real landing origin once it is
+      live.~~ **RESOLVED 2026-08-15 — it stays EMPTY**, which is better than
+      setting it. The landing's nginx proxies `/api/contact` to the backend on
+      the internal network, so the request is same-origin and no CORS allowlist
+      is involved at all. The variable remains supported for the case where the
+      landing is ever hosted off-host (S3+CloudFront, Vercel).
 
 ### Track 3 — Repo hygiene (found 2026-08-14, do before deploying)
 

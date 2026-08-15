@@ -149,7 +149,7 @@ its origin through CORS.
 
 ```bash
 cd backend
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # runtime + test tooling (both fully pinned)
 python scripts/migrate.py                # apply migrations/*.sql
 uvicorn app.main:app --reload --port 5310
 ```

@@ -31,8 +31,16 @@ WORKDIR /app
 # CACHE TRICK: copy ONLY requirements.txt first and install. Since this layer
 # only changes when the dependencies change, Docker reuses the already-cached
 # install while you edit code (which is copied afterwards).
+#
+# requirements.txt is GENERATED from requirements.in by pip-compile and pins
+# every version, transitive dependencies included, so two builds of the same
+# commit produce the same image. Before pinning, `openai>=1.6.0` silently
+# resolved to a new major that broke on arrival.
+#
+# Runtime dependencies only — pytest and hypothesis live in requirements-dev.txt
+# and have no business inside a container exposed to the internet.
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Now copy the rest of the backend code.
 # (The .dockerignore keeps .env, .venv, tests, etc. out.)

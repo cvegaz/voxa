@@ -1,0 +1,20 @@
+# Development and test dependencies. Everything in requirements.in, plus the
+# tooling needed to run the suite.
+#
+# Kept separate so the production image installs ONLY what it runs: pytest and
+# hypothesis have no business inside a container exposed to the internet, both
+# for size and for attack surface.
+#
+# Generated counterpart: requirements-dev.txt
+#     .venv/bin/pip-compile requirements-dev.in
+
+-r requirements.in
+
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+hypothesis>=6.92.0
+httpx>=0.25.0
+
+# The tool that generates the .txt files from these .in files. Declared here so
+# "how do I regenerate the pins?" is answerable from the repo alone.
+pip-tools>=7.4.0

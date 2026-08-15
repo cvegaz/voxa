@@ -107,14 +107,18 @@ has a working counterpart to copy and adapt:
       now build their client **lazily**, on first use, preserving the injection
       seam. `tests/test_offline_suite.py` asserts the property directly, so a
       future service that constructs eagerly is caught locally instead of in CI.
-- [ ] **No dependency pinning.** `backend/requirements.txt` uses `>=` with no
-      lockfile, so a fresh install — and **the production Docker image** —
-      resolves to whatever versions exist on build day: two builds of the same
-      commit can differ. Not theoretical: the pin says `openai>=1.6.0` and a fresh
-      install resolved to **3.0.0**, two major versions on, which is what made the
-      constructor start raising. The lazy-client fix removed the symptom; the
-      unpinned dependency is still the mechanism by which the next one arrives
-      silently and undated. Fix: pin exact versions or adopt a lockfile.
+- [x] ~~**No dependency pinning.**~~ **FIXED 2026-08-14, before deploying.**
+      `backend/` now uses the abstract/concrete split: hand-written
+      `requirements.in` / `requirements-dev.in` carry the intent, and
+      pip-compile generates fully-pinned `requirements.txt` /
+      `requirements-dev.txt` including transitive dependencies. The Dockerfile
+      installs the runtime file only, so pytest and hypothesis no longer ship
+      inside a container exposed to the internet. `openai` is capped below the
+      next major deliberately. **Verified**: the pinned set was installed into a
+      clean venv and the full suite passed there with an empty environment, and
+      the call signatures of `audio.transcriptions.create` and
+      `chat.completions.create` were checked against the pinned version — the
+      offline suite would not have caught a signature change on its own.
 - [ ] **Two migrations numbered `006`** (`006_add_session_language.sql`,
       `006_create_contact_messages.sql`). They apply fine today because the
       runner sorts by filename, but the numbering no longer expresses order and a

@@ -82,9 +82,38 @@ has a working counterpart to copy and adapt:
       the hop-counting property: 33 POSTs each carrying a **different forged
       `X-Forwarded-For`** all landed in one bucket and the tail got 429 — a spoofed
       header cannot mint fresh quota.
-- [ ] `.github/workflows/docker-publish.yml` — multi-arch build → GHCR → deploy via
-      AWS SSM with OIDC (no stored keys, no inbound SSH). pps's version is
-      directly adaptable.
+- [x] ~~`.github/workflows/docker-publish.yml`~~ **DONE 2026-08-15.** Multi-arch
+      (amd64 + arm64 via QEMU) build of the three images → GHCR → deploy via AWS
+      SSM with OIDC. No stored AWS keys, no inbound SSH, nothing to rotate. Two
+      tags per build: `latest` for the server to pull, and the commit SHA so a
+      rollback is a one-line `.env.production` edit plus a restart.
+
+      **One improvement over pps's version, from a failure this repo actually
+      had:** pps triggers on `push: main`, which RACES CI — both start at once,
+      so a merge whose tests are still running (or already red) publishes and
+      deploys anyway. That happened here: the demo-limits PR was merged with 0
+      of 3 checks finished. Voxa's uses `workflow_run` gated on
+      `conclusion == 'success'`, making the pipeline sequential. Note the
+      conclusion check is load-bearing — `types: [completed]` means "finished",
+      not "succeeded". **pps should get the same fix**; noted in its runbook.
+
+      The landing's `VITE_APP_URL` is passed as a build arg here rather than
+      defaulted in the Dockerfile, so the image stays domain-agnostic and the
+      deployment decides where "Try it yourself" points.
+
+      **Verified**: `actionlint` clean on both workflows; all three images build
+      for `linux/arm64` (the server's architecture) and report `linux/arm64`;
+      and the built landing bundle really does contain `app.tryvoxa.com` with
+      the `tu-usuario/voxa` placeholder gone — i.e. the CTA will be live.
+
+      **OWNER ACTION** — set two repository *variables* (Settings → Secrets and
+      variables → Actions → Variables). They are identifiers, not secrets; the
+      OIDC trust condition is what gates access:
+
+      | Variable | Value |
+      |---|---|
+      | `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::275123487888:role/voxa-github-deploy` |
+      | `SSM_INSTANCE_ID` | `i-0e4bb82ab4bf45264` |
 - [ ] Terraform for Voxa — same modules, **its own state key** (`voxa/stage1`) and
       `Project=voxa` cost tag, per the account-governance decision in the shared
       plan. **DECIDED 2026-08-14: its own EC2 instance**, not the pps host. The
@@ -94,8 +123,31 @@ has a working counterpart to copy and adapt:
       and buys a coupling that is expensive to undo later. (Same reasoning that
       moved Voxa to its own OpenAI project — a shared budget is a shared failure
       domain.)
-- [ ] Domain — **not purchased yet**, deliberately: bought when everything else is
-      ready to go live.
+- [x] ~~Domain~~ **`tryvoxa.com`, bought 2026-08-15.** Chosen after checking the
+      field: `voxa.com` and `voxa.dev` are ACTIVE companies in adjacent AI/dev
+      spaces, and `voxa.io` / `.ai` / `.app` are parked on premium marketplaces.
+      `tryvoxa.com` unblocks the deploy for ~$11/yr without committing the
+      brand — **the naming question stays open** (trademark search at IMPI/USPTO
+      pending; a rename is cheap now and expensive once there is traffic).
+      `voxa-core.com` was available and deliberately NOT bought: the product is
+      Voxa, the engine is an implementation detail, and naming the apex after
+      the engine inverts the hierarchy.
+
+      Registered at **Porkbun**, not Route 53: registration failed twice on this
+      AWS account, both rejected in under a second with an opaque message. The
+      payment method was valid and setting the unset payment currency changed
+      nothing, so a deterministic account-level block is the standing hypothesis
+      (seller of record is AWS Mexico; `playprosystems.com` registered fine six
+      days earlier). Support case open. DNS still lives in Route 53 — registrar
+      and DNS host are separate services — so Terraform manages the records
+      exactly as it does for pps.
+- [x] ~~Terraform for Voxa~~ **DONE and APPLIED 2026-08-15**: 18 resources, its
+      own EC2 (`i-0e4bb82ab4bf45264`, t4g.small, mx-central-1c), Elastic IP
+      `78.13.12.185`, all three A records resolving, SSM agent Online, cloud-init
+      done with Docker 29.1.3. State key `voxa/stage1`, cost tag `Project=voxa`.
+      Running cost ≈ **$20/month** — note this is above the ~$15 first estimated:
+      the miss was the public IPv4 charge (~$3.65/mo), which AWS has applied to
+      every public address, attached or not, since February 2024.
 - [ ] `LANDING_ORIGINS`, strong `POSTGRES_PASSWORD`, decide whether `/docs` stays
       public.
 - [ ] Daily `pg_dump` to S3 with one restore drill; uptime monitor; billing alarm.

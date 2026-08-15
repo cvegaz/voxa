@@ -1,6 +1,7 @@
 import { useI18n } from '../i18n/LanguageContext';
 import { Section } from '../components/Section';
-import { IconArrowRight } from '../components/Icons';
+import { IconArrowRight, IconExternal } from '../components/Icons';
+import { LINKS } from '../config';
 import styles from './UseCases.module.css';
 
 export function UseCases() {
@@ -19,6 +20,19 @@ export function UseCases() {
           <span className={styles.tag}>{t('cases.playpro.tag')}</span>
           <h3 className={styles.cardTitle}>{t('cases.playpro.title')}</h3>
           <p className={styles.cardDesc}>{t('cases.playpro.desc')}</p>
+          {/* A quiet link, not a button: this card is evidence, and the page's
+              primary action still belongs to the demo and to contact. */}
+          {LINKS.playpro && (
+            <a
+              href={LINKS.playpro}
+              className={styles.cardLink}
+              target="_blank"
+              rel="noreferrer noopener"
+            >
+              {t('cases.playpro.cta')}
+              <IconExternal size={15} />
+            </a>
+          )}
         </article>
 
         {/* Invitation: your domain → the hook */}

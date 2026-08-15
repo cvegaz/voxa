@@ -99,7 +99,8 @@ export const messages = {
     'cases.playpro.tag': 'Caso real',
     'cases.playpro.title': 'playPro Stats',
     'cases.playpro.desc':
-      'Captura por voz de estadísticas de fútbol americano. Se construyó como una configuración sobre el núcleo de Voxa —no un fork—: mismas tuberías, distinto vocabulario y columnas.',
+      'Captura por voz de estadísticas de fútbol americano. Se construyó como una configuración sobre el núcleo de Voxa —no un fork—: mismas tuberías, distinto vocabulario y columnas. Hoy está en producción con un cliente real.',
+    'cases.playpro.cta': 'Verlo en producción',
     'cases.yours.tag': 'Tu proyecto',
     'cases.yours.title': '¿Tu dominio?',
     'cases.yours.desc':
@@ -251,7 +252,8 @@ export const messages = {
     'cases.playpro.tag': 'Real case',
     'cases.playpro.title': 'playPro Stats',
     'cases.playpro.desc':
-      'Voice capture of American-football statistics. Built as a configuration on top of the Voxa core —not a fork—: same pipelines, different vocabulary and columns.',
+      'Voice capture of American-football statistics. Built as a configuration on top of the Voxa core —not a fork—: same pipelines, different vocabulary and columns. It is in production today with a real client.',
+    'cases.playpro.cta': 'See it in production',
     'cases.yours.tag': 'Your project',
     'cases.yours.title': 'Your domain?',
     'cases.yours.desc':

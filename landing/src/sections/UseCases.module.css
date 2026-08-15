@@ -53,6 +53,26 @@
   line-height: 1.6;
 }
 
+/* Deliberately a link and not a `.btn`: the accent card next to it carries the
+   page's action, and two buttons side by side would split the attention this
+   section is meant to funnel. `margin-top: auto` pins it to the bottom so both
+   cards line up regardless of copy length. */
+.cardLink {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
 @media (max-width: 760px) {
   .grid {
     grid-template-columns: 1fr;

@@ -204,6 +204,16 @@ has a working counterpart to copy and adapt:
 - [ ] **Record the demo GIF/video** — and drop it at `docs/assets/demo.gif`,
       which the README already references and which **does not exist**, so the
       public repo opens with a broken image (see Phase 8 of the ADR-0019 plan).
+- [x] ~~**Link the playPro Stats case study to the live product**~~ **DONE
+      2026-08-15.** The card claimed pps was built as a configuration over the
+      Voxa core and named a real client, with no way to check either. It now
+      links to `https://app.playprosystems.com` — the app, not
+      `playprosystems.com`, because the claim is about the *product* and its
+      marketing site is not evidence of it. pps's reads are public, so a
+      visitor sees real games without an account. Both URLs verified live (200)
+      before linking; a dead link here would cost more credibility than the
+      claim buys. Styled as a quiet link rather than a button so the page's
+      primary action stays with the demo.
 - [ ] **Decide where the landing gets published** — a marketing site nobody links
       to is a marketing site nobody sees. Concrete channels beat "we'll share it":
       the GitHub profile README, a LinkedIn post built from the ADRs (the

@@ -13,6 +13,9 @@
 > Turn spoken narration into structured spreadsheet data. Talk, and Voxa fills in
 > your Excel file.
 
+**▶ Try it: [app.tryvoxa.com](https://app.tryvoxa.com)** — no sign-up, 1 template
+and 3 narrations. About the product: [tryvoxa.com](https://tryvoxa.com).
+
 **Voxa** lets you capture data by **voice**: you upload an Excel template, narrate
 the information out loud, and an LLM transcribes your speech and extracts the right
 values into the right columns — appending a new row to your spreadsheet. No typing,
@@ -204,6 +207,9 @@ Voxa is developed test-first: each service and endpoint has a corresponding test
 (see [ADR-0009](docs/adr/0009-test-driven-development.md)).
 
 ## Deployment
+
+**Live at [tryvoxa.com](https://tryvoxa.com)** — the landing at the apex, the
+demo app at [app.tryvoxa.com](https://app.tryvoxa.com).
 
 Production runs on a single ARM EC2 instance in `mx-central-1`: Caddy is the only
 public entry (automatic HTTPS), serving the marketing landing at the apex and the

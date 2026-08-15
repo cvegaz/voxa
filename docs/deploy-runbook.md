@@ -1,9 +1,13 @@
 # Deploy runbook — Voxa, Stage 1
 
-Everything needed to put Voxa in production and keep it there. The
-infrastructure is already applied; what remains is the **first deploy**, which
-is manual by necessity (the server has no files yet). After that, deploys are
-automatic on every merge to `main`.
+> **Live since 2026-08-15 at https://tryvoxa.com.** The bootstrap below has been
+> executed; deploys are now automatic on every merge to `main`. Pasos 1–3 are
+> kept because they are the rebuild procedure: if the server is ever destroyed
+> and re-applied, this is how it comes back.
+
+Everything needed to put Voxa in production and keep it there. The first deploy
+is manual by necessity — the server starts with no files and no registry
+credentials, and that is the loop the bootstrap breaks.
 
 For *why* the pieces look the way they do, see
 [ADR-0019](adr/0019-public-demo-limits.md) and the commentary inside
@@ -179,29 +183,60 @@ Encrypt rate-limits failures.
 
 ## Paso 4 — Verify
 
+**Every `docker compose` invocation needs `--env-file .env.production`, not just
+`up`.** `ps` and `logs` interpolate the same variables and fail with
+`required variable POSTGRES_PASSWORD is missing a value` without it — which
+reads like a broken deploy when the stack is in fact running fine. Export the
+flag once per shell:
+
 ```bash
-docker compose -f docker-compose.prod.yml ps        # five services up, db healthy
-docker compose -f docker-compose.prod.yml logs caddy | grep -i certificate
+cd ~/voxa
+E="-f docker-compose.prod.yml --env-file .env.production"
+
+docker compose $E ps                                  # five services, db healthy
+docker compose $E logs caddy | grep -i "certificate obtained"
+docker compose $E logs backend | grep -i "APLICADA"    # migrations 001→010
 ```
 
-From your machine:
+From your machine — but see the DNS warning below first:
 
 ```bash
-curl -sI https://tryvoxa.com            | head -1   # 200, the landing
-curl -sI https://app.tryvoxa.com        | head -1   # 200, the demo SPA
-curl -sI https://www.tryvoxa.com        | head -1   # 301 to the apex
-curl -sI http://tryvoxa.com             | head -1   # 308 to HTTPS
+IP=$(cd infra/terraform && terraform output -raw public_ip)
+R=(--resolve "tryvoxa.com:443:$IP" --resolve "www.tryvoxa.com:443:$IP" \
+   --resolve "app.tryvoxa.com:443:$IP" --resolve "tryvoxa.com:80:$IP")
+
+curl -s "${R[@]}" -o /dev/null -w '%{http_code}\n' https://tryvoxa.com/       # 200 landing
+curl -s "${R[@]}" -o /dev/null -w '%{http_code}\n' https://app.tryvoxa.com/   # 200 SPA
+curl -s "${R[@]}" -o /dev/null -w '%{http_code}\n' https://www.tryvoxa.com/   # 301
+curl -s "${R[@]}" -o /dev/null -w '%{http_code}\n' http://tryvoxa.com/        # 308
 
 # security headers present, Server banner gone
-curl -sI https://tryvoxa.com | grep -iE "strict-transport|x-frame|x-content|referrer|^server"
+curl -sI "${R[@]}" https://tryvoxa.com/ \
+  | grep -iE "strict-transport|x-frame|x-content|referrer|^server"
 
-# the contact form reaches the backend through the apex
-curl -s -X POST https://tryvoxa.com/api/contact -H 'Content-Type: application/json' \
-  -d '{"name":"Deploy check","email":"you@example.com","message":"First deploy verification."}'
+# the contact form reaches the backend through the apex, and persists
+curl -s "${R[@]}" -X POST https://tryvoxa.com/api/contact \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Deploy check","email":"you@example.com","message":"Deploy verification."}'
+docker compose $E exec -T db psql -U postgres -d db_audio_excel \
+  -c "select name, email, created_at from contact_messages order by id desc limit 1;"
 
 # and the apex does NOT expose the rest of the API (expect the SPA, not JSON)
-curl -sI https://tryvoxa.com/api/schemas | head -1
+curl -s "${R[@]}" -o /dev/null -w '%{http_code}\n' https://tryvoxa.com/api/schemas   # 200 = SPA
 ```
+
+> **For the first ~24 h after a DNS change, your own machine is the worst
+> witness.** The NS records carry a one-day TTL, so your resolver keeps serving
+> the previous nameservers long after the registry has been updated. On the
+> first deploy this produced a completely convincing wrong answer: every URL
+> returned `302` with `server: openresty` and a valid Let's Encrypt certificate
+> — all of it Porkbun's parking page, reached through the stale cache. Nothing
+> in that output hints that it is not your server.
+>
+> Hence `--resolve`: it bypasses DNS entirely and asks the machine you actually
+> deployed to. Flush the local cache with
+> `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`, or check from
+> a phone on mobile data for an independent resolver.
 
 Then do the one check no script covers: **open the site and record a narration.**
 The demo limits, the microphone permission and the ffprobe duration measurement
@@ -216,6 +251,20 @@ only prove themselves end to end.
 3. Only if CI concludes successfully, **docker-publish** builds the three
    multi-arch images, pushes them to GHCR, and sends one SSM command to the
    server: `pull && up -d`.
+
+Confirmed working on the first run (2026-08-15): CI passed on the PR and again
+on `main`, and only then did `docker-publish` start — the gate is sequential,
+not a race. All three multi-arch builds succeeded in about seven minutes, the
+arm64 backend under QEMU emulation setting the pace.
+
+That run's `deploy` job **failed on purpose**, and the failure is worth reading
+because it proves the rest: the OIDC step succeeded — GitHub minted the token,
+AWS validated it against the provider shared with pps, and the trust condition
+scoped to `repo:cvegaz/voxa:ref:refs/heads/main` accepted it — and the SSM
+command reached the instance, which answered
+`cd: /home/ubuntu/voxa: No such file or directory`. Identity, permissions and
+transport all worked; only the directory was missing. That is the bootstrap
+loop, and it closes once.
 
 Nothing to do by hand. Compose recreates only the containers whose image
 changed; Postgres and its volume are untouched.

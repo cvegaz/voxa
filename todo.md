@@ -197,10 +197,23 @@ has a working counterpart to copy and adapt:
 - [ ] **Fill `landing/.env`** — partially done 2026-08-14: `VITE_GITHUB_URL`
       now points at the real repo (`cvegaz/voxa`); it defaulted to the
       placeholder `https://github.com/tu-usuario/voxa`, i.e. the landing linked
-      to a repo that does not exist. Still empty: the deployed app URL (waits on
-      Track 2), LinkedIn, Calendly, and contact email. Note the file is
-      git-ignored, so the deployed build needs these injected at build time, not
-      copied from a developer machine.
+      to a repo that does not exist. The deployed app URL is now supplied as a
+      **build arg** in `docker-publish.yml`, and `VITE_PLAYPRO_URL` has a real
+      default. Still empty: LinkedIn and Calendly. Note the file is git-ignored,
+      so the deployed build needs these injected at build time, not copied from a
+      developer machine.
+
+      **`VITE_CONTACT_EMAIL` stays empty deliberately** (2026-08-15). Publishing
+      an address in the bundle gets it harvested within days, and the only
+      address available today is a personal one. It is also unnecessary: the form
+      persists every submission regardless, and `CONTACT_NOTIFY_EMAIL` —
+      **server-side config nobody sees** — now delivers the notification (Gmail
+      app password, verified end to end before deploying). The public address and
+      the notification address are separate decisions, and only the public one
+      waits on settling the brand. When it settles the answer is an **alias** on
+      the domain forwarding to the personal inbox — address ≠ account, no new
+      mailbox to check — with its MX records added to `dns.tf` so they are
+      versioned like everything else.
 - [ ] **Record the demo GIF/video** — and drop it at `docs/assets/demo.gif`,
       which the README already references and which **does not exist**, so the
       public repo opens with a broken image (see Phase 8 of the ADR-0019 plan).

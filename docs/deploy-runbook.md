@@ -88,7 +88,52 @@ Three things to get right, because each fails silently:
   same-origin through its own nginx, so there is no cross-origin request to
   allow. Filling it in would only widen CORS for no reason.
 
-`.env.production` holds secrets and is git-ignored. Never commit it.
+`.env.production` holds secrets and is git-ignored. Never commit it. Keep it
+`chmod 600`.
+
+### Contact-form notifications
+
+Submissions are **always** persisted to Postgres — `ContactService` returns
+early when SMTP is unset, so nothing is ever lost. What SMTP buys is latency:
+without it you only learn about a lead by querying the database, and for a
+freelance channel a four-day reply is a lost client.
+
+Configured with a Google **app password**, not the account password (Google
+blocked the latter for SMTP in 2022). The app password is scoped to one
+application and revocable on its own, so a compromised server costs you that
+credential and not your account:
+
+```bash
+CONTACT_NOTIFY_EMAIL=<your inbox>
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<same Google account>
+SMTP_PASSWORD=<16 chars, NO SPACES>
+```
+
+Two traps, both silent:
+
+- **Google displays the app password as four space-separated blocks**
+  (`abcd efgh ijkl mnop`). The spaces are presentation. Pasted verbatim,
+  authentication fails — and because the notification is best-effort, the
+  submission still saves and *nothing* reports the failure. Strip them.
+- **`From` must match the authenticated account.** The service uses
+  `SMTP_USER or CONTACT_NOTIFY_EMAIL`. If you later publish an alias on the
+  domain and set `SMTP_USER` to it, Gmail will reject the send until that
+  alias is registered under "send mail as".
+
+Verify before deploying rather than after — an unverified mail credential
+surfaces weeks later, with someone waiting for an answer:
+
+```bash
+python - <<'PY'
+import smtplib, ssl
+s = smtplib.SMTP("smtp.gmail.com", 587, timeout=25)
+s.starttls(context=ssl.create_default_context())
+s.login("<SMTP_USER>", "<SMTP_PASSWORD>")   # raises on failure
+print("auth ok"); s.quit()
+PY
+```
 
 ## Paso 2 — Copy the deploy files to the server
 

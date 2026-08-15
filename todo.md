@@ -45,8 +45,13 @@ has a working counterpart to copy and adapt:
       directly adaptable.
 - [ ] Terraform for Voxa — same modules, **its own state key** (`voxa/stage1`) and
       `Project=voxa` cost tag, per the account-governance decision in the shared
-      plan. **Open decision: own EC2 (isolates pps, which serves a paying client,
-      from Voxa deploys) vs. the same host (cheaper, shared Caddy and restart).**
+      plan. **DECIDED 2026-08-14: its own EC2 instance**, not the pps host. The
+      deciding factor is blast radius, not cost: pps serves a paying client, and a
+      shared host couples that client's availability to a portfolio project's
+      deploys, restarts, and public-demo load. Sharing saves a few dollars a month
+      and buys a coupling that is expensive to undo later. (Same reasoning that
+      moved Voxa to its own OpenAI project — a shared budget is a shared failure
+      domain.)
 - [ ] Domain — **not purchased yet**, deliberately: bought when everything else is
       ready to go live.
 - [ ] `LANDING_ORIGINS`, strong `POSTGRES_PASSWORD`, decide whether `/docs` stays
@@ -66,10 +71,13 @@ has a working counterpart to copy and adapt:
 - [ ] **`og-image.png` in `landing/public/`** — the folder holds only
       `favicon.svg` and `robots.txt` today, so any share on LinkedIn or WhatsApp
       renders a blank card. The single cheapest fix with the highest reach.
-- [ ] **Fill `landing/.env`** — `VITE_GITHUB_URL` still defaults to the
-      placeholder `https://github.com/tu-usuario/voxa`, i.e. the landing
-      currently links to a repo that does not exist. Also the deployed app URL,
-      LinkedIn, and contact email.
+- [ ] **Fill `landing/.env`** — partially done 2026-08-14: `VITE_GITHUB_URL`
+      now points at the real repo (`cvegaz/voxa`); it defaulted to the
+      placeholder `https://github.com/tu-usuario/voxa`, i.e. the landing linked
+      to a repo that does not exist. Still empty: the deployed app URL (waits on
+      Track 2), LinkedIn, Calendly, and contact email. Note the file is
+      git-ignored, so the deployed build needs these injected at build time, not
+      copied from a developer machine.
 - [ ] **Record the demo GIF/video** — and drop it at `docs/assets/demo.gif`,
       which the README already references and which **does not exist**, so the
       public repo opens with a broken image (see Phase 8 of the ADR-0019 plan).
@@ -271,7 +279,13 @@ has a working counterpart to copy and adapt:
 - [ ] Confirm that `backend/.env` is NOT tracked: `git ls-files | grep .env` should return nothing (already verified ✅)
 - [ ] Check that there are no hardcoded keys in code, tests, `docker-compose.yml`, README, or screenshots
 - [ ] Confirm that `backend/.env.example` exists and contains the variables WITHOUT real values (only `OPENAI_API_KEY=`)
-- [ ] Set a monthly spending limit in the OpenAI dashboard (Billing → usage limits) as a safety net
+- [x] ~~Set a monthly spending limit in the OpenAI dashboard as a safety net~~ **DONE
+      2026-08-14** — and at the **project** level, not the account level, because both
+      keys shared OpenAI's "Default project" and an account-wide cap would have
+      throttled pps (a paying client) too. Voxa now has its own `voxa-demo` project:
+      $15/month spend limit, alert at $9, allowed models restricted to `whisper-1`
+      and `gpt-4o-mini`, 10 RPM on both. Key rotated, old one revoked. Full
+      rationale in the [ADR-0019 plan](docs/plans/0019-public-demo-limits.md).
 
 ### A.2 Base repo files
 - [ ] Add a `LICENSE` (MIT recommended for a portfolio) — it currently does NOT exist
@@ -340,8 +354,9 @@ has a working counterpart to copy and adapt:
   sending domain that is not purchased yet. The demo stays anonymous, with the
   limits above standing in for identity. Accounts remain the freemium's first
   step (#11).
-- [ ] Keep the monthly OpenAI spending cap active (last line of defense, outside
-  the app)
+- [x] ~~Keep the monthly OpenAI spending cap active (last line of defense, outside
+  the app)~~ **DONE 2026-08-14** — see A.1 above for the values and why it is scoped
+  to Voxa's own OpenAI project rather than the whole account.
 
 ### C.3 Network exposure
 - [ ] HTTPS required (most hosts provide it for free with a domain)

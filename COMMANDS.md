@@ -57,6 +57,36 @@ What happens:
 > Tip: if the browser tab was already open, do a hard reload (Ctrl+F5) so it
 > does not serve cached files from the previous version.
 
+## Start the landing page
+
+The marketing site is **not** part of `docker-compose.yml` — it is a separate
+static site that deploys independently of the app (any CDN), so it runs on its
+own:
+
+```bash
+cd landing
+npm install        # first time only
+npm run dev        # Vite on :5301, proxies /api → localhost:5310
+```
+
+Then open 👉 **http://localhost:5301**
+
+The page renders standalone; only the **contact form** needs the backend, so
+start it too (`docker compose up -d backend` from the root, or the local
+uvicorn) if you want to exercise that flow.
+
+External links (GitHub, app, LinkedIn, Calendly, email) come from `landing/.env`
+— copy `landing/.env.example` and fill it in. Links that resolve to an empty
+value are hidden rather than rendered dead.
+
+To check the production build locally:
+
+```bash
+cd landing
+npm run build      # static site in landing/dist/
+npm run preview    # serves that build, also on :5301
+```
+
 ## Service URLs
 
 Voxa owns the **`53xx` block** in this machine's port registry

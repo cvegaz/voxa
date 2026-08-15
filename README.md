@@ -190,9 +190,15 @@ Inside Docker Compose, `DATABASE_URL` is overridden to point at the `db` service
 ## Tests
 
 ```bash
-cd backend  && pytest        # backend suite (pytest + hypothesis)
-cd frontend && npm test      # frontend suite (vitest)
+cd backend  && pytest                              # backend suite (pytest + hypothesis)
+cd frontend && npm run lint && npm test            # eslint + vitest
+cd landing  && npm run lint && npm test            # eslint + vitest
 ```
+
+All three run in CI, lint and typecheck included. The backend suite runs on an
+**empty environment** — no database, no API key — and a test asserts that
+guarantee directly, so it cannot quietly start depending on a developer's
+exported credentials.
 
 Voxa is developed test-first: each service and endpoint has a corresponding test
 (see [ADR-0009](docs/adr/0009-test-driven-development.md)).

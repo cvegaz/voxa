@@ -14,12 +14,12 @@ headroom, ~$0.45/day) counted in operations priced by configured unit costs; per
 10/hour and 20/day on billable endpoints; email captured as a soft gate that grants no
 quota; capability detection, no browser sniffing; every cap is configuration.
 
-**Numbering note:** `backend/migrations/` already contains **two** `006_*` files
-(`add_session_language`, `create_contact_messages`). New migrations here start at
-**007**. The existing collision is tracked in `todo.md` → *Track 3 — Repo hygiene*;
-**if it is fixed first**, the renumbering there takes `007` and the migrations below
-shift up by one. Whichever lands first wins — just do not leave two files sharing a
-number again.
+**Numbering note (resolved):** when this plan was written `backend/migrations/`
+held **two** `006_*` files (`add_session_language`, `create_contact_messages`), so
+the migrations below took **007–009**. The collision was fixed afterwards in
+`todo.md` → *Track 3*: `create_contact_messages` became **010**, the ones below
+kept their numbers, and `scripts/migrate.py` now refuses to run when two
+migrations share a number. Final order on a fresh database: 001→010.
 
 ---
 
@@ -179,9 +179,11 @@ Goal: at month's end, distinguish "nobody cared" from "it silently broke".
 - [x] `backend/.env.example` — document every new variable with its default and the
       one-line reason it exists.
 - [x] `README.md` / `CLAUDE.md` — document the demo limits and where to tune them.
-      Also fix the **broken image reference** at the top of the README
-      (`docs/assets/demo.gif` does not exist), which is currently the first thing a
-      visitor to the public repo sees.
+      The **broken image reference** at the top of the README was the first thing a
+      visitor to the public repo saw; `docs/assets/demo.gif` still does not exist,
+      so the tag is now commented out with the instructions to restore it once the
+      GIF is recorded (tracked in `todo.md` → *Track 4*). A missing image costs
+      less than a broken one.
 - [ ] **OWNER ACTION** — confirm the OpenAI account's own monthly spending cap is
       set. The last line of defence, outside the application: the in-app ledger
       protects against demo traffic, but only the account cap protects against a

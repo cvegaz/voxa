@@ -64,7 +64,7 @@ npm run lint       # eslint (flat config; also runs in CI, in both frontend/ and
 - **`services/`** — business logic. All of the domain lives here (whisper, LLM extraction/enrichment, validators, excel_writer, orchestrator, prompt_builder, response_parser…).
 - **`repositories/`** — data access (Postgres via `asyncpg`).
 - **`models/`** — Pydantic models / data schemas.
-- **`migrations/`** — versioned SQL (`00N_*.sql` + its `_rollback.sql`). Applied with `scripts/migrate.py`.
+- **`migrations/`** — versioned SQL (`00N_*.sql` + its `_rollback.sql`). Applied with `scripts/migrate.py`, which sorts by filename and records each applied file. **Numbers must be unique**: the runner refuses to start if two migrations share one (it happened once, silently, because sorting by filename is deterministic and hid it). Take the next free number; never reuse or renumber a migration that a live database has already applied.
 
 The OpenAI services (`whisper_service`, `llm_extraction_service`, `llm_enrichment_service`) take an optional `AsyncOpenAI` client in the constructor; if it is `None`, they create one with `OPENAI_API_KEY`. **Keep this pattern** — it is what allows injecting a mock in the tests.
 

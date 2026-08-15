@@ -2,7 +2,7 @@
 
 Quick reference for running Voxa with Docker.
 
-> Run all commands from the project root (`c:\Users\l01402933\Documents\voxa`), where `docker-compose.yml` lives.
+> Run all commands from the project root, where `docker-compose.yml` lives.
 
 ## Start the app
 
@@ -72,3 +72,39 @@ fails loudly instead of hopping to the next free port.
 | Landing (Vite dev) | http://localhost:5301 |
 | Backend API docs (Swagger) | http://localhost:5310/docs |
 | PostgreSQL (DB client) | `localhost:5330` |
+
+## Quality checks
+
+The same three that CI runs. Running them locally before pushing is the whole
+point of having them.
+
+```bash
+cd backend  && .venv/bin/python -m pytest -q     # 506 tests, no DB and no API key needed
+cd frontend && npm run lint && npx tsc -b --noEmit && npm test
+cd landing  && npm run lint && npx tsc -b --noEmit && npm test
+```
+
+The backend suite runs on an **empty environment** on purpose — CI provides no
+secrets, and `tests/test_offline_suite.py` asserts that guarantee. If a test ever
+starts needing a key, it fails there rather than in a red build weeks later.
+
+## Public demo report
+
+Sessions, "aha" rate, downloads, leads, walls hit, spend, and cost per captured
+lead (ADR-0019 §7):
+
+```bash
+cd backend && .venv/bin/python scripts/funnel_report.py            # this month
+cd backend && .venv/bin/python scripts/funnel_report.py 2026-08-01 # from a date
+```
+
+## Dependencies
+
+`backend/requirements.txt` is **generated** — never edit it by hand. Change
+`requirements.in` (or `requirements-dev.in`) and regenerate both:
+
+```bash
+cd backend
+.venv/bin/pip-compile --strip-extras requirements.in
+.venv/bin/pip-compile --strip-extras requirements-dev.in
+```

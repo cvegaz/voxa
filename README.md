@@ -203,6 +203,24 @@ exported credentials.
 Voxa is developed test-first: each service and endpoint has a corresponding test
 (see [ADR-0009](docs/adr/0009-test-driven-development.md)).
 
+## Deployment
+
+Production runs on a single ARM EC2 instance in `mx-central-1`: Caddy is the only
+public entry (automatic HTTPS), serving the marketing landing at the apex and the
+demo app at `app.<domain>`, in front of the FastAPI backend and Postgres — which
+publishes no port at all. The infrastructure is declared in
+[`infra/terraform/`](infra/terraform/); the stack in
+[`docker-compose.prod.yml`](docker-compose.prod.yml).
+
+Deploys are automatic: merging to `main` runs CI, and **only if CI passes**
+([`docker-publish.yml`](.github/workflows/docker-publish.yml)) builds the three
+multi-arch images, pushes them to GHCR, and tells the server to pull and restart
+over AWS SSM — authenticated with OIDC, so there are no stored AWS keys and no
+inbound SSH.
+
+Step-by-step, including the first manual bootstrap, rollback, backups and how to
+tune the demo limits: **[`docs/deploy-runbook.md`](docs/deploy-runbook.md)**.
+
 ## Project structure
 
 The product is organized into three independent modules, each with its own

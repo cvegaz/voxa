@@ -34,7 +34,11 @@ export const messages = {
       'Sube una plantilla, narra la información en voz alta y la IA transcribe tu voz y extrae cada dato en su columna. Sin teclear, sin formularios.',
     'hero.ctaPrimary': 'Hablemos de tu caso',
     'hero.ctaGithub': 'Ver en GitHub',
-    'hero.ctaApp': 'Probar la app',
+    'hero.ctaApp': 'Pruébalo tú mismo',
+    // Keep in sync with the backend's ANONYMOUS_MAX_NARRATIONS (default 3) and
+    // MAX_AUDIO_DURATION_SECONDS. Promising a trial the app does not grant is
+    // worse than promising nothing.
+    'hero.trialNote': 'Sin registro · 1 plantilla y 3 narraciones · ~2 minutos',
 
     // Hero mockup (animated)
     'mockup.spoken': '«Estadio Azteca, aforo 87 000, partido el 17 de septiembre»',
@@ -95,7 +99,8 @@ export const messages = {
     'cases.playpro.tag': 'Caso real',
     'cases.playpro.title': 'playPro Stats',
     'cases.playpro.desc':
-      'Captura por voz de estadísticas de fútbol americano. Se construyó como una configuración sobre el núcleo de Voxa —no un fork—: mismas tuberías, distinto vocabulario y columnas.',
+      'Captura por voz de estadísticas de fútbol americano. Se construyó como una configuración sobre el núcleo de Voxa —no un fork—: mismas tuberías, distinto vocabulario y columnas. Hoy está en producción con un cliente real.',
+    'cases.playpro.cta': 'Verlo en producción',
     'cases.yours.tag': 'Tu proyecto',
     'cases.yours.title': '¿Tu dominio?',
     'cases.yours.desc':
@@ -185,7 +190,8 @@ export const messages = {
       'Upload a template, narrate the information out loud, and AI transcribes your speech and extracts each value into its column. No typing, no forms.',
     'hero.ctaPrimary': "Let's talk about your use case",
     'hero.ctaGithub': 'View on GitHub',
-    'hero.ctaApp': 'Try the app',
+    'hero.ctaApp': 'Try it yourself',
+    'hero.trialNote': 'No sign-up · 1 template and 3 narrations · ~2 minutes',
 
     // Hero mockup (animated)
     'mockup.spoken': '“Azteca Stadium, capacity 87,000, match on September 17th”',
@@ -246,7 +252,8 @@ export const messages = {
     'cases.playpro.tag': 'Real case',
     'cases.playpro.title': 'playPro Stats',
     'cases.playpro.desc':
-      'Voice capture of American-football statistics. Built as a configuration on top of the Voxa core —not a fork—: same pipelines, different vocabulary and columns.',
+      'Voice capture of American-football statistics. Built as a configuration on top of the Voxa core —not a fork—: same pipelines, different vocabulary and columns. It is in production today with a real client.',
+    'cases.playpro.cta': 'See it in production',
     'cases.yours.tag': 'Your project',
     'cases.yours.title': 'Your domain?',
     'cases.yours.desc':

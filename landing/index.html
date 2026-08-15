@@ -10,15 +10,45 @@
       name="description"
       content="Voxa convierte narración hablada en datos estructurados de Excel. Sube una plantilla, narra, y la IA transcribe y extrae los campos. Adaptable a tu dominio."
     />
-    <!-- Open Graph / social preview -->
+    <!--
+      Open Graph / social preview.
+
+      Every URL here is ABSOLUTE on purpose. Open Graph crawlers do not resolve
+      relative paths — they read the raw tag, and "/og-image.png" is not a URL
+      they can fetch. The tag used to be relative, which meant the card would
+      have rendered blank even once the image existed: the failure would have
+      looked like a missing file rather than a malformed tag.
+
+      The domain is therefore hard-coded. It has to live somewhere, since there
+      is no relative form; if the domain or brand changes, this block and
+      design/og-image.svg change together.
+    -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Voxa" />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:url" content="https://tryvoxa.com/" />
     <meta property="og:title" content="Voxa — Captura datos por voz, llena tu Excel" />
     <meta
       property="og:description"
       content="Habla, y Voxa llena tu Excel. Transcripción y extracción de campos con IA, adaptable a tu caso de uso."
     />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image" content="https://tryvoxa.com/og-image.png" />
+    <!-- Declaring the dimensions lets a crawler lay out the card before it has
+         finished downloading the image, which is the difference between a card
+         that appears instantly and one that pops in. -->
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Voxa: una onda de voz se convierte en una fila de Excel con sede, aforo y fecha."
+    />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Voxa — Captura datos por voz, llena tu Excel" />
+    <meta
+      name="twitter:description"
+      content="Habla, y Voxa llena tu Excel. Transcripción y extracción de campos con IA, adaptable a tu caso de uso."
+    />
+    <meta name="twitter:image" content="https://tryvoxa.com/og-image.png" />
   </head>
   <body>
     <div id="root"></div>

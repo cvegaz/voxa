@@ -184,10 +184,34 @@ Goal: at month's end, distinguish "nobody cared" from "it silently broke".
       so the tag is now commented out with the instructions to restore it once the
       GIF is recorded (tracked in `todo.md` → *Track 4*). A missing image costs
       less than a broken one.
-- [ ] **OWNER ACTION** — confirm the OpenAI account's own monthly spending cap is
-      set. The last line of defence, outside the application: the in-app ledger
-      protects against demo traffic, but only the account cap protects against a
-      leaked key or a bug in the ledger itself.
+- [x] ~~**OWNER ACTION** — confirm the OpenAI account's own monthly spending cap
+      is set.~~ **DONE 2026-08-14.** The last line of defence, outside the
+      application: the in-app ledger protects against demo traffic, but only the
+      provider-side cap protects against a leaked key or a bug in the ledger
+      itself.
+
+      Both keys turned out to live in OpenAI's auto-created **"Default
+      project"**, so any cap set there would have throttled **pps — a paying
+      client — along with Voxa's public demo**. A cost control that can take
+      production down is not a control. Voxa was therefore moved to its own
+      `voxa-demo` project (Voxa is not deployed yet, so rotating *its* key is
+      free; rotating pps's key is a live-service secret change and is deliberately
+      left as its own separate task). Key rotated and the old one revoked;
+      verified by fingerprint that Voxa's changed and pps's did not.
+
+      What is now set on `voxa-demo`:
+
+      | Control | Value | Job |
+      |---|---|---|
+      | Spend limit | **$15/month** | Backstop above the app ledger's $7 — deliberately *not* equal to it, or it would fire during intended operation and protect nothing |
+      | Spend alert | 60% (**$9**) | Notice before the cut, not after |
+      | Allowed models | **`whisper-1`, `gpt-4o-mini`** only | Least privilege: a leaked key inherits only what the key could already do. Also fails loudly if someone later points a service at a pricier model |
+      | Rate limits | **10 RPM** on both | Spend accounting lags; rate limits are instantaneous. This bounds the loss inside the window before the spend limit registers |
+
+      Note the dashboard's own caveat — *"your actual costs may exceed this based
+      on usage"*. The spend limit is not an instantaneous cut-off, which is
+      exactly why the rate limits and the in-app ledger are not redundant with
+      it: three layers, three different jobs.
 
 ---
 

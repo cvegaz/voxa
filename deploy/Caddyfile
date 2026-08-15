@@ -1,0 +1,72 @@
+# Caddy — the stack's only public entry (deployment plan, Stage 1).
+#
+# Automatic HTTPS: with a real domain in VOXA_DOMAIN, Caddy obtains and renews
+# Let's Encrypt certificates by itself, and redirects HTTP→HTTPS. For a local
+# smoke test set VOXA_DOMAIN=localhost and it issues from its own internal CA.
+#
+# Hostname split, mirroring playPro Stats:
+#   apex          → landing  (marketing site + its /api/contact proxy)
+#   app.<domain>  → frontend (the demo SPA + its /api proxy)
+#   www.<domain>  → 301 to the apex
+#
+# Nothing else is published. The backend and Postgres have no host ports at all
+# (docker-compose.prod.yml); they are reachable only from inside this network.
+
+# Shared security headers. Caddy gives you HTTPS but does NOT emit these on its
+# own — they are defense in depth for the browser side. CSP is deliberately not
+# in this snippet: the SPA needs a tuned policy and the landing can take a much
+# stricter one, so each block decides for itself.
+(security_headers) {
+	header {
+		# Force HTTPS for a year. The demo captures microphone audio, which
+		# browsers only permit in a secure context anyway.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Block MIME-type sniffing.
+		X-Content-Type-Options "nosniff"
+		# Anti-clickjacking: never allow framing.
+		X-Frame-Options "DENY"
+		# Don't leak full URLs to third parties.
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Hide the server banner.
+		-Server
+	}
+}
+
+# Apex: the static marketing landing.
+{$VOXA_DOMAIN} {
+	encode gzip
+	import security_headers
+	reverse_proxy landing:80
+}
+
+# app.<domain>: the demo SPA. Its nginx serves the static build and forwards
+# /api to the backend on the internal network.
+app.{$VOXA_DOMAIN} {
+	encode gzip
+	import security_headers
+
+	# CSP blunts XSS. Commented because a wrong policy blanks the SPA — enable
+	# it and TEST after the first successful deploy, then tune. Starting point
+	# for this app (Vite build, mic capture, same-origin /api, blob audio
+	# playback, and the .xlsx download served from the backend):
+	# header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'"
+
+	# Audio uploads are capped at MAX_AUDIO_BYTES (4 MB) by the application, but
+	# the application only sees a body it has already buffered. Rejecting an
+	# oversized upload at the edge means it is never carried across two proxies
+	# first. Kept above the app's cap so the app's error — which is specific and
+	# translated for the user — is what a legitimate near-limit upload gets.
+	request_body {
+		max_size 8MB
+	}
+
+	reverse_proxy frontend:80
+}
+
+# www is a SEPARATE hostname and needs its own DNS record pointing here.
+# Canonicalize on the apex: Caddy fetches a cert for www and 301-redirects every
+# request, preserving the path. Comment this block out for a localhost smoke
+# test — there is no www.localhost to get a certificate for.
+www.{$VOXA_DOMAIN} {
+	redir https://{$VOXA_DOMAIN}{uri} permanent
+}

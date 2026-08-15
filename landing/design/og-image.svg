@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="0.78" cy="-0.1" r="0.85">
+      <stop offset="0%" stop-color="#eff4ff"/>
+      <stop offset="60%" stop-color="#fafafa"/>
+      <stop offset="100%" stop-color="#fafafa"/>
+    </radialGradient>
+    <style>
+      .sans { font-family: Inter, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- brand mark: same glyph as the favicon -->
+  <g transform="translate(80,74)">
+    <rect width="56" height="56" rx="13" fill="#1d4ed8"/>
+    <g transform="translate(12,10) scale(1.05)" fill="none" stroke="#ffffff"
+       stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="11.5" y="3" width="8" height="14" rx="4"/>
+      <path d="M7 14.5a8.5 8.5 0 0 0 17 0"/>
+      <line x1="15.5" y1="23" x2="15.5" y2="27"/>
+    </g>
+    <text class="sans" x="74" y="39" font-size="34" font-weight="700" fill="#18181b">Voxa</text>
+  </g>
+
+  <!-- headline -->
+  <text class="sans" x="80" y="272" font-size="68" font-weight="800" fill="#18181b">Habla, y Voxa</text>
+  <text class="sans" x="80" y="352" font-size="68" font-weight="800" fill="#18181b">llena tu Excel.</text>
+
+  <text class="sans" x="80" y="416" font-size="27" font-weight="400" fill="#52525b">Captura de datos por voz. La IA transcribe y</text>
+  <text class="sans" x="80" y="454" font-size="27" font-weight="400" fill="#52525b">extrae cada dato en su columna.</text>
+
+  <!-- voice -> row, the product in one glance -->
+  <g transform="translate(80,516)">
+    <g fill="#1d4ed8">
+      <rect x="0"  y="16" width="5" height="14" rx="2.5"/>
+      <rect x="11" y="8"  width="5" height="30" rx="2.5"/>
+      <rect x="22" y="0"  width="5" height="46" rx="2.5"/>
+      <rect x="33" y="10" width="5" height="26" rx="2.5"/>
+      <rect x="44" y="18" width="5" height="10" rx="2.5"/>
+      <rect x="55" y="6"  width="5" height="34" rx="2.5"/>
+      <rect x="66" y="17" width="5" height="12" rx="2.5"/>
+    </g>
+    <path d="M92 23h34" stroke="#a1a1aa" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M119 16l8 7-8 7" fill="none" stroke="#a1a1aa" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <g>
+      <rect x="146" y="4"  width="150" height="38" rx="7" fill="#ffffff" stroke="#dbe4fe" stroke-width="1.5"/>
+      <rect x="304" y="4"  width="110" height="38" rx="7" fill="#ffffff" stroke="#dbe4fe" stroke-width="1.5"/>
+      <rect x="422" y="4"  width="120" height="38" rx="7" fill="#ffffff" stroke="#dbe4fe" stroke-width="1.5"/>
+      <text class="sans" x="162" y="29" font-size="17" fill="#52525b">Estadio Azteca</text>
+      <text class="sans" x="320" y="29" font-size="17" fill="#52525b">87 000</text>
+      <text class="sans" x="438" y="29" font-size="17" fill="#52525b">17 sep</text>
+    </g>
+  </g>
+
+  <!-- accent rule + domain -->
+  <rect x="0" y="614" width="1200" height="16" fill="#1d4ed8"/>
+  <text class="sans" x="1120" y="112" font-size="22" font-weight="600" fill="#1e40af"
+        text-anchor="end">tryvoxa.com</text>
+</svg>

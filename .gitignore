@@ -17,10 +17,32 @@ npm-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 
-# Environment variables
+# Environment variables.
+# Deny everything, then re-admit only the templates. The previous rules listed
+# `.env`, `.env.local` and `.env.*.local`, which left `.env.production` — the
+# file holding the real OPENAI_API_KEY and POSTGRES_PASSWORD — perfectly
+# committable. An allowlist fails safe: a new .env.<something> is ignored by
+# default instead of needing someone to remember to add a rule.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Terraform.
+# .tfvars holds the owner's home IP (personal data) and is never committed;
+# the .example next to it is. Local state files would leak resource ids and,
+# for some providers, secrets — state lives in S3, not here. The .terraform
+# directory is a multi-hundred-MB provider cache.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+# Saved plan files embed variable values — including anything sensitive that
+# was passed in — so they are artifacts, never commits.
+*.tfplan
+crash.log
 
 # OS
 .DS_Store

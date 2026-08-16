@@ -58,5 +58,13 @@ svg {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    /* Killing the duration is not enough: with `animation-fill-mode: both`, an
+       element holds its FROM keyframe for the whole DELAY, and animated values
+       outrank normal declarations — so a card with `animation-delay: 1.7s` and
+       `from { opacity: 0 }` stays invisible for 1.7s no matter what any later
+       rule sets. For someone who asked the OS for no motion, that is a blank
+       hero, which is worse than the animation they opted out of. */
+    animation-delay: 0.001ms !important;
+    transition-delay: 0.001ms !important;
   }
 }

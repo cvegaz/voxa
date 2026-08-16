@@ -41,16 +41,42 @@ export const messages = {
     'hero.trialNote': 'Sin registro · 1 plantilla y 3 narraciones · ~2 minutos',
 
     // Hero mockup (animated)
-    'mockup.spoken': '«Estadio Azteca, aforo 87 000, partido el 17 de septiembre»',
     'mockup.recording': 'Grabando',
     'mockup.transcribing': 'Transcribiendo',
     'mockup.extracting': 'Extrayendo campos',
+    // Two labels, because one would lie for half the loop: the sheet card is
+    // on screen from the first frame, and announcing "Fila añadida" over an
+    // empty table claims something that has not happened yet.
+    'mockup.sheet': 'Tu hoja',
     'mockup.done': 'Fila añadida',
+    // Mirrors the app's own `controls.accept`, so the mockup does not promise a
+    // button the visitor will not find after clicking "Pruébalo tú mismo".
+    'mockup.accept': 'Aceptar',
     'mockup.colVenue': 'Sede',
     'mockup.colCapacity': 'Aforo',
     'mockup.colDate': 'Fecha',
+    // The permanent third row: "and it keeps going" without spending seconds
+    // of animation to say so.
+    'mockup.more': 'y así sucesivamente',
     'mockup.ariaLabel':
-      'Demostración animada: la voz se convierte en texto y luego en una fila de Excel.',
+      'Demostración animada: dos narraciones se convierten en dos filas de la misma hoja de Excel.',
+
+    // Two narrated examples. The fragments are what is "heard", one at a time;
+    // the venue/capacity/date values are what lands in the row. Both records
+    // share the same three columns on purpose — that is how Voxa works: one
+    // template, many narrations.
+    'mockup.ex1.say1': 'Estadio Azteca',
+    'mockup.ex1.say2': 'aforo 87 000',
+    'mockup.ex1.say3': 'partido el 17 de septiembre',
+    'mockup.ex1.venue': 'Estadio Azteca',
+    'mockup.ex1.capacity': '87000',
+    'mockup.ex1.date': '17-sep-2026',
+    'mockup.ex2.say1': 'Estadio BBVA',
+    'mockup.ex2.say2': 'aforo 51 000',
+    'mockup.ex2.say3': 'partido el 24 de septiembre',
+    'mockup.ex2.venue': 'Estadio BBVA',
+    'mockup.ex2.capacity': '51000',
+    'mockup.ex2.date': '24-sep-2026',
 
     // How it works
     'how.title': 'De la voz a la celda, en seis pasos',
@@ -194,16 +220,31 @@ export const messages = {
     'hero.trialNote': 'No sign-up · 1 template and 3 narrations · ~2 minutes',
 
     // Hero mockup (animated)
-    'mockup.spoken': '“Azteca Stadium, capacity 87,000, match on September 17th”',
     'mockup.recording': 'Recording',
     'mockup.transcribing': 'Transcribing',
     'mockup.extracting': 'Extracting fields',
+    'mockup.sheet': 'Your sheet',
     'mockup.done': 'Row added',
+    'mockup.accept': 'Accept',
     'mockup.colVenue': 'Venue',
     'mockup.colCapacity': 'Capacity',
     'mockup.colDate': 'Date',
+    'mockup.more': 'and so on',
     'mockup.ariaLabel':
-      'Animated demo: speech becomes text and then a row in Excel.',
+      'Animated demo: two narrations become two rows of the same Excel sheet.',
+
+    'mockup.ex1.say1': 'Azteca Stadium',
+    'mockup.ex1.say2': 'capacity 87,000',
+    'mockup.ex1.say3': 'match on September 17th',
+    'mockup.ex1.venue': 'Azteca Stadium',
+    'mockup.ex1.capacity': '87000',
+    'mockup.ex1.date': '17-Sep-2026',
+    'mockup.ex2.say1': 'BBVA Stadium',
+    'mockup.ex2.say2': 'capacity 51,000',
+    'mockup.ex2.say3': 'match on September 24th',
+    'mockup.ex2.venue': 'BBVA Stadium',
+    'mockup.ex2.capacity': '51000',
+    'mockup.ex2.date': '24-Sep-2026',
 
     // How it works
     'how.title': 'From voice to cell, in six steps',
